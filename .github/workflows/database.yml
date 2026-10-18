@@ -1,0 +1,36 @@
+name: Verify isolated database
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Name the disposable database
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('supabase/config.toml')
+          p.write_text(p.read_text().replace('project_id = "example-okr"', 'project_id = "okr-repro-check"'))
+          PY
+      - name: Start local services
+        run: npm exec supabase -- start --exclude studio,postgres-meta,imgproxy,edge-runtime,realtime,logflare,vector,supavisor
+      - run: npm exec supabase -- db reset --local --no-seed
+      - run: npm exec supabase -- test db --local
+      - run: python3 scripts/test-bootstrap-admin.py supabase_db_okr-repro-check
+      - run: node scripts/test-local-onboarding.mjs .
+      - run: npm exec supabase -- db lint --local --fail-on error
+      - name: Stop disposable services
+        if: always()
+        run: npm exec supabase -- stop
