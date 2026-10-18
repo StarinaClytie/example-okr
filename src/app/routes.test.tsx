@@ -1,0 +1,93 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { AuthProvider } from '../auth/AuthContext';
+import { App } from './App';
+import { AppRoutes } from './routes';
+
+describe('application routes', () => {
+  it('opens personal settings for an employee without exposing role-restricted settings', async () => {
+    window.history.pushState({}, '', '/settings');
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: '设置' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: '个人偏好' })).toBeVisible();
+    expect(screen.queryByRole('tab', { name: '系统设置' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'HR 规则' })).not.toBeInTheDocument();
+  });
+
+  it('renders the real DashboardPage when the dashboard URL is opened directly', () => {
+    render(
+      <AuthProvider initialUserId="user-project-leader">
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <AppRoutes />
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    expect(screen.getByRole('heading', { name: '项目执行概览' })).toBeVisible();
+    expect(screen.getByText('我的关键结果')).toBeVisible();
+    expect(screen.queryByText('页面框架将在后续迭代中补充。')).not.toBeInTheDocument();
+  });
+
+  it('redirects a manual /auth/invite visit to the dashboard', () => {
+    render(
+      <AuthProvider initialUserId="user-employee">
+        <MemoryRouter initialEntries={['/auth/invite']}>
+          <AppRoutes />
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    expect(screen.getByRole('heading', { name: '我的工作概览' })).toBeVisible();
+  });
+
+  it('redirects a manual /auth/reset-password visit to the dashboard', () => {
+    render(
+      <AuthProvider initialUserId="user-employee">
+        <MemoryRouter initialEntries={['/auth/reset-password']}>
+          <AppRoutes />
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    expect(screen.getByRole('heading', { name: '我的工作概览' })).toBeVisible();
+  });
+
+  it('shows only generic access-denied content when the access-denied URL is opened directly', () => {
+    render(
+      <AuthProvider initialUserId="user-employee">
+        <MemoryRouter initialEntries={['/access-denied']}>
+          <AppRoutes />
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    expect(screen.getByRole('heading', { name: '访问受限' })).toBeVisible();
+    expect(screen.getByText('当前账户没有访问此页面的权限。')).toBeVisible();
+    expect(screen.queryByText('新星数据平台')).not.toBeInTheDocument();
+    expect(screen.queryByText('为经营团队提供统一、可追溯的指标数据。')).not.toBeInTheDocument();
+    expect(screen.queryByText('机密')).not.toBeInTheDocument();
+  });
+
+  it('opens the real dashboard from the sidebar and switches all project views', async () => {
+    const user = userEvent.setup();
+    render(
+      <AuthProvider initialUserId="user-project-leader">
+        <MemoryRouter initialEntries={['/projects']}>
+          <AppRoutes />
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+    expect(screen.getByRole('heading', { name: '项目' })).toBeVisible();
+
+    await user.click(screen.getByRole('link', { name: '仪表盘' }));
+    expect(screen.getByRole('heading', { name: '项目执行概览' })).toBeVisible();
+
+    for (const label of ['对齐树', '甘特图', '进度趋势', '工时']) {
+      await user.click(screen.getByRole('tab', { name: label }));
+      expect(screen.getByRole('tabpanel', { name: label })).toBeVisible();
+    }
+  });
+});
