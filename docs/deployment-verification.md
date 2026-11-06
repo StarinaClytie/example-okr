@@ -58,3 +58,11 @@ The public example was generalized and tested from an independent clean source e
 - Email delivery uses caller-aware atomic authorization, a service-only complete provider payload snapshot, a stable provider idempotency key, a bounded retry window and checked delivery-status persistence. Handler tests use simulated provider/database failures, not live mail.
 
 Live OSS behavior, external email delivery and a hosted example remain unverified. Existing installations must follow the coordinated function/database upgrade and attachment URL-drain procedure in the installation guide. Expired or pre-upgrade ambiguous email attempts require operator reconciliation. No existing organization's hosted services were accessed.
+
+## 2026-11-06 attachment API request budgets
+
+The attachment API now applies a shared process-level admission budget before identity-provider calls and a verified-account budget before database authorization and OSS operations. Both attachment families share the budgets. Tests cover unauthenticated load, token rotation, forged forwarding headers, independent accounts, window reset, concurrent requests, health-check availability and authentication-provider failure.
+
+Validation: **686 application tests across 78 files passed**, frontend/typecheck and attachment server builds passed, and dependency audit reported **zero vulnerabilities**. Independent review found no high/medium issues. No database schema or real cloud service was changed by this update.
+
+Quotas are process-local and reset on restart; multi-instance deployments need gateway or shared-store enforcement. The server keeps proxy trust disabled. See the installation guide for settings and proxy requirements.
