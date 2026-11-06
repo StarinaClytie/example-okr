@@ -160,7 +160,7 @@ See the [Supabase and deployment guide](docs/supabase-setup.md) for database set
 
 Daily-report business dates use **Asia/Shanghai (UTC+8)** in database rules. Interface language switching does not change this timezone. Teams operating in other timezones should review the date rules before persistent use.
 
-The attachment API expects a same-origin reverse proxy. Cross-origin browser access is not enabled. Production operators should configure request limits at the proxy and restrict access to the backend listener; see the [installation guide](docs/supabase-setup.md).
+The attachment API expects a same-origin reverse proxy. Cross-origin browser access is not enabled. The API applies per-process admission and verified-account rate limits. Production operators should also configure per-client request limits at the proxy and restrict access to the backend listener; see the [installation guide](docs/supabase-setup.md).
 
 See [contributing](CONTRIBUTING.md) for development checks and [security reporting](SECURITY.md) for private vulnerability reports.
 

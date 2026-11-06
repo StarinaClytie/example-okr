@@ -117,6 +117,22 @@ location / {
 
 The frontend calls same-origin API paths. The Vite development configuration has no attachment proxy: test attachments through this proxy setup, or add your own development proxy. A running frontend alone does not provide upload/download support. `/api/health` on the server checks process availability, not OSS credentials or authorization correctness.
 
+### Attachment API request limits
+
+The server enforces two request budgets shared by `/api/attachments/` and `/api/resource-attachments/`:
+
+| Setting | Default | Scope |
+| --- | --- | --- |
+| `ATTACHMENT_RATE_LIMIT_WINDOW_MS` | `60000` | Window length in milliseconds |
+| `ATTACHMENT_RATE_LIMIT_GLOBAL_REQUESTS` | `6000` | All attachment requests per server process, before token verification |
+| `ATTACHMENT_RATE_LIMIT_USER_REQUESTS` | `120` | Requests per verified account per server process, before authorization/OSS calls |
+
+Every attachment request consumes the admission budget, including invalid tokens and over-quota accounts. Account quotas use the identity returned by Supabase Auth, so token rotation or forged forwarding headers do not create a new budget. Different accounts retain independent account quotas behind the same proxy. A global admission limit can still reject all clients when exhausted; it is a backstop against upstream request volume, not a per-client fairness mechanism.
+
+A blocked request returns HTTP `429`, a generic JSON error and a `Retry-After` header. Callers should wait before retrying, not loop immediately. Limits cannot be disabled with zero or invalid values: the server rejects those configurations at startup. `/api/health` is excluded.
+
+Counters live in each server process and reset on restart. Multiple instances multiply the available budget; this is not a distributed quota or concurrent-operation limit. Use gateway/shared-store enforcement when a deployment needs fleet-wide limits, and configure per-client rate limits at your reverse proxy to protect admission and authentication capacity. Keep the backend listener private. The application deliberately keeps Express `trust proxy` disabled and does not use `X-Forwarded-For` for quota keys; do not turn on blanket proxy trust to bypass a limit.
+
 ## 8. Deploy account management and optional resource emails
 
 Deploy the current functions to your independent project:
