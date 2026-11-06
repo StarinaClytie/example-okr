@@ -17,7 +17,7 @@ function response(body: unknown, ok = true, status = 200) {
 describe('OSS attachment transport', () => {
   it('requests a signed URL, uploads directly with progress, then finalizes', async () => {
     const fetchImpl = vi.fn()
-      .mockResolvedValueOnce(response({ url: 'https://oss.example/signed', contentType: 'application/pdf' }))
+      .mockResolvedValueOnce(response({ url: 'https://oss.example/signed', contentType: 'application/pdf', headers: { 'x-oss-forbid-overwrite': 'true' } }))
       .mockResolvedValueOnce(response({ state: 'uploaded' }));
     const xhr = new FakeXhr();
     const transport = createOssAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl, createXhr: () => xhr as never });
@@ -25,9 +25,29 @@ describe('OSS attachment transport', () => {
     await transport.upload('attachment-1', new File(['data'], 'a.pdf', { type: 'application/pdf' }), (value) => progress.push(value), new AbortController().signal);
     expect(fetchImpl).toHaveBeenNthCalledWith(1, '/api/attachments/attachment-1/upload-url', expect.objectContaining({ method: 'POST' }));
     expect(xhr.open).toHaveBeenCalledWith('PUT', 'https://oss.example/signed');
+    expect(xhr.setRequestHeader).toHaveBeenCalledWith('x-oss-forbid-overwrite', 'true');
     expect(progress).toContain(50);
     expect(fetchImpl).toHaveBeenNthCalledWith(2, '/api/attachments/attachment-1/finalize', expect.objectContaining({ method: 'POST' }));
     expect(progress.at(-1)).toBe(100);
+  });
+  it('retries finalization when a completed PUT already exists (409)', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response({ url: 'https://oss.example/signed', contentType: 'application/pdf', headers: { 'x-oss-forbid-overwrite': 'true' } }))
+      .mockResolvedValueOnce(response({ state: 'uploaded' }));
+    const xhr = new FakeXhr(); xhr.status = 409;
+    const transport = createOssAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl, createXhr: () => xhr as never });
+    await transport.upload('a', new File(['data'], 'a.pdf'), vi.fn(), new AbortController().signal);
+    expect(fetchImpl).toHaveBeenLastCalledWith('/api/attachments/a/finalize', expect.objectContaining({ method: 'POST' }));
+  });
+  it('does not mark a conflict retry complete when server verification fails', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response({ url: 'https://oss.example/signed', contentType: 'application/pdf', headers: { 'x-oss-forbid-overwrite': 'true' } }))
+      .mockResolvedValueOnce(response({}, false, 422));
+    const xhr = new FakeXhr(); xhr.status = 409;
+    const progress = vi.fn();
+    const transport = createOssAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl, createXhr: () => xhr as never });
+    await expect(transport.upload('a', new File(['data'], 'a.pdf'), progress, new AbortController().signal)).rejects.toThrow('HTTP 422');
+    expect(progress).not.toHaveBeenCalledWith(100);
   });
   it('exposes signed downloads and server-coordinated deletion', async () => {
     const fetchImpl = vi.fn()
@@ -41,7 +61,7 @@ describe('OSS attachment transport', () => {
 
   it('uses resource attachment routes and holds complete XHR progress at 99 until finalization', async () => {
     const fetchImpl = vi.fn()
-      .mockResolvedValueOnce(response({ url: 'https://oss.example/resource-signed', contentType: 'application/pdf' }))
+      .mockResolvedValueOnce(response({ url: 'https://oss.example/resource-signed', contentType: 'application/pdf', headers: { 'x-oss-forbid-overwrite': 'true' } }))
       .mockResolvedValueOnce(response({ state: 'uploaded' }))
       .mockResolvedValueOnce(response({ url: 'https://oss.example/resource-download' }))
       .mockResolvedValueOnce(response(null, true, 204));

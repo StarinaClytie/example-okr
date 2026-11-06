@@ -21,7 +21,7 @@ afterEach(() => {
 
 describe('loadProductionEnv', () => {
   test('follows Vite production env-file precedence while process env remains highest priority', async () => {
-    const envDirectory = mkdtempSync(join(tmpdir(), 'northstar-production-env-'));
+    const envDirectory = mkdtempSync(join(tmpdir(), 'example-okr-production-env-'));
     temporaryDirectories.push(envDirectory);
     writeFileSync(join(envDirectory, '.env'), 'VITE_APP_MODE=demo\nVITE_SUPABASE_URL=https://base.supabase.co\n');
     writeFileSync(join(envDirectory, '.env.local'), 'VITE_SUPABASE_URL=https://local.supabase.co\n');
