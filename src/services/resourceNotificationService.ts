@@ -3,7 +3,7 @@ import type { SupabaseClientLike } from '../data/types';
 // Best-effort server-side email delivery for a persisted resource problem.
 // Delivery is attempted through the `resource-problem-notify` Edge Function; a
 // false `delivered` result never means the problem itself was lost — only that
-// the email could not be sent (and the notification remains retryable).
+// delivery was not confirmed. Some states require operator reconciliation.
 
 export interface ResourceNotificationResult {
   delivered: boolean;

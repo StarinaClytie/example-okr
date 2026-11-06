@@ -4,6 +4,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../auth/AuthContext';
 import { AppRoutes } from './routes';
 
+// These contracts concern shell/summary accessibility, not chart rendering.
+// Keep lazy chart imports lightweight so a cold transform cannot consume the
+// summary's query deadline on slower developer machines.
+vi.mock('../dashboard/widgets/AlignmentTreeWidget', () => ({ AlignmentTreeWidget: () => <div /> }));
+vi.mock('../dashboard/widgets/ProgressTrendWidget', () => ({ ProgressTrendWidget: () => <div /> }));
+
 function renderAppAt(userId: string, path: string) {
   return render(
     <AuthProvider initialUserId={userId}>

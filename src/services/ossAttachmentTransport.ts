@@ -14,7 +14,7 @@ async function jsonRequest<T>(fetchImpl: typeof fetch, token: string, path: stri
   return response.status === 204 ? undefined as T : await response.json() as T;
 }
 
-function putFile(createXhr: () => XMLHttpRequest, url: string, contentType: string, file: File, onProgress: (percent: number) => void, signal: AbortSignal) {
+function putFile(createXhr: () => XMLHttpRequest, url: string, contentType: string, headers: Record<string, string>, file: File, onProgress: (percent: number) => void, signal: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
     const xhr = createXhr();
     let settled = false;
@@ -27,10 +27,13 @@ function putFile(createXhr: () => XMLHttpRequest, url: string, contentType: stri
     const abort = () => { xhr.abort(); finish(new Error('OSS upload aborted')); };
     xhr.open('PUT', url);
     xhr.setRequestHeader('Content-Type', contentType);
+    for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
     xhr.upload.addEventListener('progress', (event) => {
       if (event.total > 0) onProgress(Math.min(99, Math.round((event.loaded / event.total) * 100)));
     });
-    xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? finish() : finish(new Error(`OSS upload failed (HTTP ${xhr.status})`));
+    // A lost PUT response can leave an immutable object behind. A conflict only
+    // advances to server verification; it never marks the upload complete itself.
+    xhr.onload = () => ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 409) ? finish() : finish(new Error(`OSS upload failed (HTTP ${xhr.status})`));
     xhr.onerror = () => finish(new Error('OSS upload network error'));
     xhr.onabort = () => finish(new Error('OSS upload aborted'));
     if (signal.aborted) { abort(); return; }
@@ -51,8 +54,8 @@ export function createOssAttachmentTransport(options: OssAttachmentTransportOpti
   return {
     async upload(attachmentId: string, file: File, onProgress: (percent: number) => void, signal: AbortSignal, onVerifying?: () => void) {
       const accessToken = await token();
-      const signed = await jsonRequest<{ url: string; contentType: string }>(fetchImpl, accessToken, `${attachmentApiBasePath}/${encodeURIComponent(attachmentId)}/upload-url`, 'POST');
-      await putFile(createXhr, signed.url, signed.contentType, file, onProgress, signal);
+      const signed = await jsonRequest<{ url: string; contentType: string; headers?: Record<string, string> }>(fetchImpl, accessToken, `${attachmentApiBasePath}/${encodeURIComponent(attachmentId)}/upload-url`, 'POST');
+      await putFile(createXhr, signed.url, signed.contentType, signed.headers ?? {}, file, onProgress, signal);
       onVerifying?.();
       await jsonRequest(fetchImpl, accessToken, `${attachmentApiBasePath}/${encodeURIComponent(attachmentId)}/finalize`, 'POST');
       onProgress(100);
