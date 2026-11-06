@@ -4,7 +4,15 @@
 
 Example OKR is a bilingual workspace for teams that need to explain how daily work contributes to key results, distinguish planned progress from actual results, and review work without giving every role access to every report. Explore the included fictional organization locally without a database, email account, or cloud deployment.
 
-[Quick start](#local-demo--no-external-services-required) · [Screenshots](#screenshots) · [Installation guide](docs/supabase-setup.md) · [User guide](docs/user-guide.en.md)
+**[Try the live demo](https://starinaclytie.github.io/example-okr/)** · [Quick start](#local-demo--no-external-services-required) · [Screenshots](#screenshots) · [Installation guide](docs/supabase-setup.md) · [User guide](docs/user-guide.en.md)
+
+### A one-minute walkthrough
+
+1. Open the demo as **Employee** and inspect an owned KR under **OKR Management**.
+2. Switch to **Project Leader** to compare planning and review views, then **HR** to inspect its work-hour view.
+3. Use the navigation language control to switch between English and Chinese. Sample business content stays in its entered language.
+
+Demo edits reset when you refresh. Sample dates are illustrative. The hosted demo uses `#/…` links so that shared pages and refreshes work on static hosting.
 
 ## Why choose Example OKR?
 
@@ -28,7 +36,7 @@ The strongest reason to choose this project is its combination of execution trac
 
 Goal linking and regular updates are also available in established products such as [Asana](https://help.asana.com/s/article/setting-and-tracking-progress-towards-goals) and [Lattice](https://lattice.com/platform/goals/okrs). Example OKR's positioning is the specific workflow above, supported by runnable source and verification records. No comparative performance, cost or security benchmark has been conducted.
 
-Example Company / 示例公司 and all example domains, accounts and cloud resource names are fictional placeholders. See [public example and release notes](docs/public-example.md) for the example-data boundaries. Hosted example services have not been deployed or verified.
+Example Company / 示例公司 and all example domains, accounts and cloud resource names are fictional placeholders. See [public example and release notes](docs/public-example.md) for the example-data boundaries. The public demo is a static, in-memory preview; it does not provide persistent database, email or attachment services.
 
 For detailed product guidance, see the [English user guide](docs/user-guide.en.md) or the [Chinese user guide](docs/user-guide.zh-CN.md).
 
