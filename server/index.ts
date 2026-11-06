@@ -7,7 +7,7 @@ import { createOssObjectStore } from './oss.js';
 loadDotEnv({ path: process.env.ATTACHMENT_ENV_FILE || '.env.production.local', override: false });
 const config = loadServerConfig(process.env);
 const database = createDatabaseGateway(config);
-const app = createApp({ ...database, oss: createOssObjectStore(config) });
+const app = createApp({ ...database, oss: createOssObjectStore(config) }, config.rateLimit);
 app.listen(config.port, config.host, () => {
   console.info(`Attachment API listening on http://${config.host}:${config.port}`);
 });
