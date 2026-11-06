@@ -18,7 +18,6 @@ jobs:
     timeout-minutes: 15
     env:
       VITE_APP_MODE: demo
-      VITE_DEMO_STATIC_HOST: 'true'
       VITE_SUPABASE_URL: ''
       VITE_SUPABASE_ANON_KEY: ''
     steps:
@@ -31,6 +30,8 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm run test:run -- --maxWorkers=2
       - run: npm run build -- --base=/${{ github.event.repository.name }}/
+        env:
+          VITE_DEMO_STATIC_HOST: 'true'
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
