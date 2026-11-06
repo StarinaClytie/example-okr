@@ -13,6 +13,8 @@
 // domain model references a provider.
 
 export interface TransactionalEmail {
+  idempotencyKey?: string;
+  from?: string;
   to: string;
   subject: string;
   text?: string;
@@ -56,12 +58,14 @@ export async function sendTransactionalEmail(email: TransactionalEmail): Promise
   try {
     const response = await fetch(RESEND_ENDPOINT, {
       method: 'POST',
+      signal: AbortSignal.timeout(30_000),
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        ...(email.idempotencyKey ? { 'Idempotency-Key': email.idempotencyKey } : {}),
       },
       body: JSON.stringify({
-        from,
+        from: email.from ?? from,
         to: [email.to],
         subject: email.subject,
         text: email.text,

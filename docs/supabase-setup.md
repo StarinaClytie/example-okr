@@ -85,6 +85,12 @@ The bootstrap script is a one-time operator procedure, not a browser API or migr
 
 The current attachment binary path uses **Alibaba Cloud OSS**, with authorization and metadata in Supabase. Historical Supabase Storage migrations do not replace this attachment API.
 
+Create a private **never-versioned** OSS bucket and restricted credentials. Enabled **or suspended** versioning is unsupported: OSS ignores overwrite prevention in both states. The attachment API checks `GetBucketVersioning` before signing uploads, verifying objects, and signing downloads, and fails closed if the check fails or versioning is detected. Grant the server `oss:GetBucketVersioning` on this bucket as well as its object permissions. Keep versioning disabled permanently, including while signed URLs remain valid. Use a fresh bucket if versioning has ever been enabled.
+
+The signed upload requires `x-oss-forbid-overwrite: true`; the browser sends the header, and CORS must allow it together with `Content-Type`. Removing or changing the header invalidates the signature. Existing objects cannot be replaced through a still-valid upload URL issued by this version. When upgrading, pause upload signing and wait at least 300 seconds for older overwrite-capable URLs to expire before resuming uploads. A retry that receives OSS HTTP 409 advances only to server metadata verification and database finalization; the original object's ETag is retained. Replacement files need a new attachment ID and object key. Do not configure lifecycle rules or other writers to delete or replace live evidence: overwrite prevention depends on the original key continuing to exist.
+
+Deletion marks metadata deleted before removing bytes. A replayed upload URL may recreate an object during its remaining 300-second validity, but the deleted attachment cannot be finalized or downloaded and its key is never reused. Clean these unreachable orphan objects only after all upload URLs have expired, using database deletion state; do not use broad age-based expiry on live attachment paths.
+
 Create a private OSS bucket and restricted credentials. Configure bucket CORS for the exact application origin, direct signed `PUT` uploads, required content headers, and downloads as appropriate. Never make the bucket public to resolve a browser CORS error. Confirm bucket region and endpoint against your Alibaba Cloud configuration.
 
 ```bash
@@ -128,6 +134,14 @@ npm exec supabase -- secrets set --env-file .env.functions.local --project-ref Y
 ```
 
 Fill the Resend API key, verified sender and `RESOURCE_APP_URL` first. **Both `RESOURCE_APP_URL` and `RESEND_FROM_EMAIL` are required and have no defaults.** Set the URL to your own application origin, without a trailing slash, and the sender to an address on your verified domain. Missing or blank values fail closed; do not expect an automatic sender or site URL. No Resend provider configuration means notifications return `email_not_configured`; configuring Auth SMTP does not configure these emails.
+
+### Notification upgrade and recovery
+
+Apply all pending database migrations and redeploy `resource-problem-notify` together while notification delivery is paused; the caller-aware claim replaces the old function signature. Restart delivery after both versions are installed.
+
+Only active, approved callers with an active role can deliver mail. The reporter may trigger the first pending delivery; retries require the resource owner, management or administrator. The same database policy applies to the retry API and the delivery claim.
+
+The complete first provider request (sender, recipient, subject and body) is saved privately before sending and reused unchanged during recovery, even if resource or profile data changes. Provider requests use a stable notification idempotency key. Automatic recovery stops after 23 hours from the first attempt, within Resend's 24-hour key retention window. A previously attempted notification from before this upgrade is treated as ambiguous and requires operator reconciliation rather than automatic resending. An expired or unknown delivery state should be checked against provider records; do not clear its timestamps or create a new notification just to retry it. The resource problem remains saved even if email delivery is unresolved.
 
 See the official [Function secrets guide](https://supabase.com/docs/guides/functions/secrets). Keep function JWT verification enabled as specified in `supabase/config.toml`; application authorization checks also run inside the functions.
 

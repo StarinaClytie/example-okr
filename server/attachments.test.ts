@@ -41,7 +41,7 @@ describe('attachment API', () => {
     const deps = dependencies();
     const response = await request(createApp(deps)).post('/api/attachments/attachment-1/upload-url')
       .set('Authorization', 'Bearer valid').send({ path: 'attacker/path' });
-    expect(response.body).toEqual({ url: 'https://oss.example/upload', method: 'PUT', contentType: 'application/pdf', expiresIn: 300 });
+    expect(response.body).toEqual({ url: 'https://oss.example/upload', method: 'PUT', contentType: 'application/pdf', headers: { 'x-oss-forbid-overwrite': 'true' }, expiresIn: 300 });
     expect(deps.oss.signPut).toHaveBeenCalledWith('organization/o/reports/r/attachment-1/file.pdf', 'application/pdf', 300);
   });
   it('verifies HEAD metadata before confirming upload', async () => {
@@ -81,7 +81,7 @@ describe('resource attachment API', () => {
     const response = await request(createApp(deps)).post('/api/resource-attachments/resource-attachment-1/upload-url')
       .set('Authorization', 'Bearer valid').send({ path: 'attacker/path' });
 
-    expect(response.body).toEqual({ url: 'https://oss.example/upload', method: 'PUT', contentType: 'application/pdf', expiresIn: 300 });
+    expect(response.body).toEqual({ url: 'https://oss.example/upload', method: 'PUT', contentType: 'application/pdf', headers: { 'x-oss-forbid-overwrite': 'true' }, expiresIn: 300 });
     expect(deps.oss.signPut).toHaveBeenCalledWith('organization/o/resources/resource-1/resource-attachment-1/manual.pdf', 'application/pdf', 300);
     expect(deps.authorize).toHaveBeenCalledWith('valid', 'upload', 'resource-attachment-1', 'resource');
   });

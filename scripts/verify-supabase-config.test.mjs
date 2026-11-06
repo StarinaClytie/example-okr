@@ -37,7 +37,7 @@ describe('verify-supabase-config', () => {
     const publicKey = 'sb_publishable_1234567890abcdefghij';
     const result = verify({
       VITE_APP_MODE: 'supabase',
-      VITE_SUPABASE_URL: 'https://example-test-123.supabase.co',
+      VITE_SUPABASE_URL: 'https://fixture-project-ref.supabase.co',
       VITE_SUPABASE_ANON_KEY: publicKey,
     }, ['--production']);
 
@@ -66,7 +66,7 @@ describe('verify-supabase-config', () => {
     const secretLikeValue = Object.values(invalidEnvironment)[0];
     const result = verify({
       VITE_APP_MODE: 'supabase',
-      VITE_SUPABASE_URL: 'https://example-test-123.supabase.co',
+      VITE_SUPABASE_URL: 'https://fixture-project-ref.supabase.co',
       VITE_SUPABASE_ANON_KEY: 'sb_publishable_1234567890abcdefghij',
       ...invalidEnvironment,
     }, ['--production']);

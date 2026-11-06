@@ -4,6 +4,8 @@
 
 Example OKR is a bilingual workspace for teams that need to explain how daily work contributes to key results, distinguish planned progress from actual results, and review work without giving every role access to every report. Explore the included fictional organization locally without a database, email account, or cloud deployment.
 
+[Quick start](#local-demo--no-external-services-required) · [Screenshots](#screenshots) · [Installation guide](docs/supabase-setup.md) · [User guide](docs/user-guide.en.md)
+
 ## Why choose Example OKR?
 
 The strongest reason to choose this project is its combination of execution traceability, explicit review rules, and an inspectable implementation.
@@ -145,3 +147,15 @@ npm run server:start
 ```
 
 See the [Supabase and deployment guide](docs/supabase-setup.md) for database setup, production checks, backups, and operational procedures.
+
+## Business dates and deployment boundaries
+
+Daily-report business dates use **Asia/Shanghai (UTC+8)** in database rules. Interface language switching does not change this timezone. Teams operating in other timezones should review the date rules before persistent use.
+
+The attachment API expects a same-origin reverse proxy. Cross-origin browser access is not enabled. Production operators should configure request limits at the proxy and restrict access to the backend listener; see the [installation guide](docs/supabase-setup.md).
+
+See [contributing](CONTRIBUTING.md) for development checks and [security reporting](SECURITY.md) for private vulnerability reports.
+
+## License
+
+[MIT](LICENSE). Third-party dependencies remain subject to their own licenses.
