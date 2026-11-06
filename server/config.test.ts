@@ -21,3 +21,20 @@ describe('loadServerConfig', () => {
     }
   });
 });
+
+it('defaults to bounded admission and verified-user request quotas', () => {
+  expect(loadServerConfig(valid)).toMatchObject({ rateLimit: { windowMs: 60_000, globalLimit: 6000, userLimit: 120 } });
+});
+it.each([
+  ['ATTACHMENT_RATE_LIMIT_WINDOW_MS', '0'],
+  ['ATTACHMENT_RATE_LIMIT_WINDOW_MS', '2147483648'],
+  ['ATTACHMENT_RATE_LIMIT_GLOBAL_REQUESTS', '-1'],
+  ['ATTACHMENT_RATE_LIMIT_USER_REQUESTS', '1.5'],
+  ['ATTACHMENT_RATE_LIMIT_USER_REQUESTS', 'invalid'],
+])('rejects invalid quota %s', (name, value) => {
+  expect(() => loadServerConfig({ ...valid, [name]: value })).toThrow(name);
+});
+it('loads explicit quota configuration', () => {
+  expect(loadServerConfig({ ...valid, ATTACHMENT_RATE_LIMIT_WINDOW_MS: '1000', ATTACHMENT_RATE_LIMIT_GLOBAL_REQUESTS: '500', ATTACHMENT_RATE_LIMIT_USER_REQUESTS: '10' }).rateLimit)
+    .toEqual({ windowMs: 1000, globalLimit: 500, userLimit: 10 });
+});

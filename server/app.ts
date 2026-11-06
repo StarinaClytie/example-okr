@@ -1,3 +1,4 @@
+import { attachmentRateLimiters, defaultAttachmentRateLimits, type AttachmentRateLimitConfig } from './rateLimit.js';
 import express, { type Request, type Response } from 'express';
 import type { AttachmentKind, AttachmentOperation, AuthorizedAttachment, OssObjectStore, RpcResult } from './types.js';
 
@@ -11,15 +12,25 @@ export interface AttachmentApiDependencies {
 
 function attachmentId(req: Request): string { return String(req.params.attachmentId || ''); }
 
-export function createApp(deps: AttachmentApiDependencies) {
+export function createApp(deps: AttachmentApiDependencies, rateLimits: AttachmentRateLimitConfig = defaultAttachmentRateLimits) {
   const app = express();
   app.disable('x-powered-by');
-  app.use(express.json({ limit: '16kb' }));
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
+  const limits = attachmentRateLimiters(rateLimits);
+  app.use(['/api/attachments', '/api/resource-attachments'], limits.admission, async (req, res, next) => {
+    try {
+      const caller = await deps.authenticate(req.header('authorization'));
+      if (!caller) { res.status(401).json({ error: 'Unauthorized' }); return; }
+      res.locals.attachmentCaller = caller;
+      next();
+    } catch {
+      res.status(503).json({ error: 'Authentication unavailable' });
+    }
+  }, limits.verifiedUser, express.json({ limit: '16kb' }));
+
   async function context(req: Request, res: Response, operation: AttachmentOperation, kind: AttachmentKind) {
-    const caller = await deps.authenticate(req.header('authorization'));
-    if (!caller) { res.status(401).json({ error: 'Unauthorized' }); return null; }
+    const caller = res.locals.attachmentCaller as { token: string; userId: string };
     const authorized = await deps.authorize(caller.token, operation, attachmentId(req), kind);
     if (!authorized.ok || !authorized.data) {
       res.status(authorized.status || 403).json({ error: authorized.message || 'Forbidden' });
