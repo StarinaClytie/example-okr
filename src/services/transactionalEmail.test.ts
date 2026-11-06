@@ -42,3 +42,15 @@ describe('transactional email configuration', () => {
     expect(JSON.parse(request.mock.calls[0][1].body as string).from).toBe(valid.RESEND_FROM_EMAIL);
   });
 });
+
+it('forwards the stable notification identity to the provider', async () => {
+  const request = configure(valid);
+  await sendTransactionalEmail({ ...message, idempotencyKey: 'resource-problem/123' });
+  expect(new Headers(request.mock.calls[0][1].headers).get('Idempotency-Key')).toBe('resource-problem/123');
+});
+
+it('reuses the snapshotted sender when configuration changes', async () => {
+  const request = configure(valid);
+  await sendTransactionalEmail({ ...message, from: 'original@example.com' });
+  expect(JSON.parse(request.mock.calls[0][1].body as string).from).toBe('original@example.com');
+});

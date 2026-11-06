@@ -46,3 +46,15 @@ The public example was generalized and tested from an independent clean source e
 - Missing notification sender/application URL now disables delivery with `email_not_configured`. Application links require an explicit HTTPS origin (loopback HTTP is allowed for local development); userinfo, paths, queries and fragments are rejected. Regression tests verify missing/invalid configuration makes no provider request.
 - A disposable stack created from the clean export applied all **42 migrations** after reset. All **798 database assertions**, **11 bootstrap cases**, local signup/confirmation/approval/login/persistence checks and local password-recovery mail capture passed. Database lint had no errors and nine existing unused parameter/variable warnings.
 - External SMTP, Resend, OSS and hosted publication were not exercised. No previous organization's service was contacted during this acceptance run. GitHub-hosted workflow execution remains unverified.
+
+## 2026-11-05 public review hardening
+
+- Replaced remaining legacy project aliases in current source; removed a handover reference to an excluded internal directory.
+- Added MIT license, contribution guidance, private vulnerability reporting policy, business timezone and proxy boundaries.
+- Updated locked vulnerable dependencies; `npm audit` reported zero vulnerabilities. Replaced unbounded `latest` declarations with bounded version ranges. Added a high-severity audit gate and automated dependency update configuration.
+- Application verification: **672 tests in 76 files passed**; frontend typecheck/build and attachment server build passed. The accessibility contract test isolates lazy chart rendering; chart implementations retain their separate tests. The existing frontend bundle-size warning remains.
+- Fresh disposable PostgreSQL installation: **44 migrations applied**, **816 pgTAP assertions in 22 files passed**, including resource checksums, caller-aware mail claims, retry limits and immutable provider payload snapshots. Because the host-to-Docker database port timed out, this run executed the same SQL test files through `docker exec`/`psql`, preparing pgTAP and checking every test plan, assertion and command exit status. The database CLI lint and full local Auth onboarding were not rerun in this pass.
+- Attachment signing now binds a creation-only header and fails closed for versioned/suspended buckets; unit tests verify the actual OSS signature. Resource attachment ETags are persisted by a new migration.
+- Email delivery uses caller-aware atomic authorization, a service-only complete provider payload snapshot, a stable provider idempotency key, a bounded retry window and checked delivery-status persistence. Handler tests use simulated provider/database failures, not live mail.
+
+Live OSS behavior, external email delivery and a hosted example remain unverified. Existing installations must follow the coordinated function/database upgrade and attachment URL-drain procedure in the installation guide. Expired or pre-upgrade ambiguous email attempts require operator reconciliation. No existing organization's hosted services were accessed.

@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(112);
+select plan(126);
 
 -- ---------------------------------------------------------------------------
 -- Fixtures: org A (admin/management/leader/employee owner/employee peer/HR/
@@ -364,9 +364,18 @@ select is(
   'the recipient is the resource owner (never client-supplied)'
 );
 
+-- Service entry must validate the real user, including lifecycle and org.
+select ok(not has_function_privilege('authenticated', 'public.claim_resource_problem_notification(uuid,uuid)', 'EXECUTE'), 'browser cannot impersonate another caller');
+select ok(not has_function_privilege('anon', 'public.claim_resource_problem_notification(uuid,uuid)', 'EXECUTE'), 'anonymous cannot claim');
+select is(public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id=n.problem_id where p.description='Notification state machine fixture'), '15000000-0000-0000-0000-000000000003'), 'forbidden', 'same-org unrelated member cannot deliver');
+select is(public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id=n.problem_id where p.description='Notification state machine fixture'), '15000000-0000-0000-0000-000000000007'), 'forbidden', 'inactive member cannot deliver');
+select is(public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id=n.problem_id where p.description='Notification state machine fixture'), '15000000-0000-0000-0000-000000000008'), 'forbidden', 'unapproved member cannot deliver');
+select is(public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id=n.problem_id where p.description='Notification state machine fixture'), '15000000-0000-0000-0000-000000000009'), 'forbidden', 'cross-org management cannot deliver');
+select is(public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id=n.problem_id where p.description='Notification state machine fixture'), '15000000-0000-0000-0000-000000000011'), 'forbidden', 'roleless member cannot deliver');
+
 -- Atomic claim: the first claim is accepted, a concurrent second is rejected.
 select is(
-  public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id = n.problem_id where p.description = 'Notification state machine fixture')),
+  public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id = n.problem_id where p.description = 'Notification state machine fixture'), '15000000-0000-0000-0000-000000000005'),
   'claimed',
   'the first delivery claim is accepted'
 );
@@ -380,17 +389,40 @@ select ok(
   'a claim records attempted_at'
 );
 select is(
-  public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id = n.problem_id where p.description = 'Notification state machine fixture')),
+  public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id = n.problem_id where p.description = 'Notification state machine fixture'), '15000000-0000-0000-0000-000000000004'),
   'in_progress',
   'a concurrent second claim is rejected (idempotent)'
 );
+
+select is(public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id=n.problem_id where p.description='Notification state machine fixture'), '15000000-0000-0000-0000-000000000005'), 'forbidden', 'reporter cannot use initial-delivery exception after claim');
+-- A stale lease can be retried with the same provider identity within the TTL.
+update public.resource_problem_notifications set attempted_at=now()-interval '6 minutes'
+where problem_id=(select id from public.resource_problems where description='Notification state machine fixture');
+select is(public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id=n.problem_id where p.description='Notification state machine fixture'), '15000000-0000-0000-0000-000000000002'), 'claimed', 'management can reclaim stale sending within provider window');
+update public.resource_problem_notifications set attempted_at=now()-interval '24 hours', delivery_started_at=now()-interval '24 hours'
+where problem_id=(select id from public.resource_problems where description='Notification state machine fixture');
+select is(public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id=n.problem_id where p.description='Notification state machine fixture'), '15000000-0000-0000-0000-000000000001'), 'retry_window_expired', 'ambiguous stale delivery is blocked beyond provider retention');
+update public.resource_problem_notifications set delivery_started_at=now(), attempted_at=now()
+where problem_id=(select id from public.resource_problems where description='Notification state machine fixture');
+
+-- The complete provider request is durable before sending and immutable on retry.
+select ok(not has_function_privilege('authenticated', 'public.snapshot_resource_problem_notification(uuid,jsonb)', 'EXECUTE'), 'browser cannot write/read provider payload through snapshot RPC');
+select ok(not has_table_privilege('authenticated', 'public.resource_problem_notifications', 'SELECT'), 'browser cannot read provider payload column');
+select is(public.snapshot_resource_problem_notification(
+  (select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id=n.problem_id where p.description='Notification state machine fixture'),
+  '{"from":"original@example.test","to":"owner@example.test","subject":"Original resource","text":"Original reporter and URL"}'::jsonb
+), '{"from":"original@example.test","to":"owner@example.test","subject":"Original resource","text":"Original reporter and URL"}'::jsonb, 'complete original payload is snapshotted before provider call');
+select is(public.snapshot_resource_problem_notification(
+  (select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id=n.problem_id where p.description='Notification state machine fixture'),
+  '{"from":"changed@example.test","to":"new-owner@example.test","subject":"Renamed resource","text":"Changed reporter and URL"}'::jsonb
+), '{"from":"original@example.test","to":"owner@example.test","subject":"Original resource","text":"Original reporter and URL"}'::jsonb, 'retry preserves every original request field');
 
 -- Simulate a successful send, then verify a sent notification never sends again.
 update public.resource_problem_notifications
 set status = 'sent', sent_at = timezone('utc', now()), error_code = null
 where id = (select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id = n.problem_id where p.description = 'Notification state machine fixture');
 select is(
-  public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id = n.problem_id where p.description = 'Notification state machine fixture')),
+  public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id = n.problem_id where p.description = 'Notification state machine fixture'), '15000000-0000-0000-0000-000000000004'),
   'sent',
   'a sent notification is never claimed again'
 );
@@ -406,7 +438,7 @@ select is(
   'a failed notification preserves the problem'
 );
 select is(
-  public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id = n.problem_id where p.description = 'Notification state machine fixture')),
+  public.claim_resource_problem_notification((select n.id from public.resource_problem_notifications n join public.resource_problems p on p.id = n.problem_id where p.description = 'Notification state machine fixture'), '15000000-0000-0000-0000-000000000004'),
   'claimed',
   'a failed notification can be retried'
 );

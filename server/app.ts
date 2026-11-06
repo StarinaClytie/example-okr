@@ -34,7 +34,7 @@ export function createApp(deps: AttachmentApiDependencies) {
         const target = await context(req, res, 'upload', kind); if (!target) return;
         const expiresIn = 300;
         const url = await deps.oss.signPut(target.path, target.mimeType, expiresIn);
-        res.json({ url, method: 'PUT', contentType: target.mimeType, expiresIn });
+        res.json({ url, method: 'PUT', contentType: target.mimeType, headers: { 'x-oss-forbid-overwrite': 'true' }, expiresIn });
       } catch { res.status(502).json({ error: 'OSS signing failed' }); }
     });
 

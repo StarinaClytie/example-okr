@@ -21,4 +21,4 @@ Keep actual credentials in ignored local files or your own secret manager. Never
 
 Record your own deployment owner, protected secret locations, backup/restore procedure and migration history outside the public repository. Complete hosted Auth delivery, HTTPS proxy and private OSS acceptance checks using your own independent test environment. Example domains are documentation placeholders and have not been deployed or tested as public services.
 
-Design notes in `superpowers/` describe development proposals and implementation plans, not evidence that every proposed feature is implemented or deployed. The installation guide and verification record define the current operational scope.
+The installation guide and verification record define the current operational scope. Internal development proposals are not included in this public release.
