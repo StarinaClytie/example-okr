@@ -47,7 +47,7 @@ Every approved, active account with an active role in the organization can find 
 
 ## 7. Switch between 中文 and English
 
-Use **中文 / English** in the top bar to switch instantly; the page and URL stay in place. Chinese is the default on the first visit. Before sign-in the choice is stored locally. After your profile loads, its saved preference takes precedence and is safely written back. If preference persistence temporarily fails, the interface still switches immediately and you can select the language again later.
+Use **中文 / English** in the top bar to switch instantly; the page and URL stay in place. The hosted public demo defaults to English on the first visit; other installations default to Chinese. Before sign-in the choice is stored locally. After your profile loads, its saved preference takes precedence and is safely written back. If preference persistence temporarily fails, the interface still switches immediately and you can select the language again later.
 
 ## 8. Daily reports, review, notifications, and export
 
