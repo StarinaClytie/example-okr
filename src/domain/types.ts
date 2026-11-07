@@ -41,6 +41,8 @@ export interface User {
   projectIds: string[];
   preferredLocale?: 'zh-CN' | 'en';
   organization?: string;
+  businessTimeZone?: string;
+  weekStartsOn?: 0 | 1;
 }
 
 export interface OrganizationRelation {

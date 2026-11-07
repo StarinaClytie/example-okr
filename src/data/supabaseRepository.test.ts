@@ -1136,3 +1136,18 @@ describe('SupabaseOkrRepository', () => {
     expect(JSON.stringify(report)).not.toContain('已移除');
   });
 });
+
+it('maps the organization calendar and saves only calendar RPC parameters', async () => {
+  const { client, rpc } = createClient({ rpcData: { state: 'active' }, profile: { id: 'profile-1', display_name: 'Ada', clearance: 'internal', approval_status: 'approved', is_active: true, user_roles: [{ role: 'administrator' }], organizations: { name: 'Acme', business_time_zone: 'Europe/London', week_starts_on: 0 } } });
+  const repository = new SupabaseOkrRepository(client);
+  const profile = await repository.getCurrentProfile();
+  expect(profile).toMatchObject({ ok: true, data: { kind: 'active', user: { businessTimeZone: 'Europe/London', weekStartsOn: 0 } } });
+  expect(await repository.updateOrganizationCalendar({ timeZone: 'UTC', weekStartsOn: 1 })).toMatchObject({ ok: true });
+  expect(rpc).toHaveBeenCalledWith('update_organization_calendar', { p_time_zone: 'UTC', p_week_starts_on: 1 });
+});
+
+it('carries the joined organization calendar into dashboard currentUser', async () => {
+  const { client } = createDashboardClient({ profiles: [{ id: 'profile-1', display_name: 'Employee', clearance: 'internal', organizations: { business_time_zone: 'UTC', week_starts_on: 0 }, user_roles: [{ role: 'employee' }] }] });
+  const result = await new SupabaseOkrRepository(client).getDashboardData();
+  expect(result).toMatchObject({ ok: true, data: { currentUser: { businessTimeZone: 'UTC', weekStartsOn: 0 } } });
+});
