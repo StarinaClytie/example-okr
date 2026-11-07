@@ -100,7 +100,7 @@ export function OkrManagementPage({ dataRepository = repository }: { dataReposit
     void refresh();
   }, [currentUser, refresh]);
 
-  const evaluationDate = useMemo(() => currentBusinessDate(), []);
+  const evaluationDate = currentBusinessDate(new Date(), currentUser?.businessTimeZone);
   const summaries = useMemo(() => {
     if (!data) return [];
     const readable = data.objectives

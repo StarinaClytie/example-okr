@@ -72,9 +72,9 @@ values ('92000000-0000-0000-0000-000000000001', '95000000-0000-0000-0000-0000000
 
 insert into public.daily_reports (id, organization_id, author_id, project_id, objective_id, report_date, status, classification)
 values
-  ('96000000-0000-0000-0000-000000000001', '92000000-0000-0000-0000-000000000001', '91000000-0000-0000-0000-000000000001', '93000000-0000-0000-0000-000000000001', '94000000-0000-0000-0000-000000000001', (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal'),
-  ('96000000-0000-0000-0000-000000000002', '92000000-0000-0000-0000-000000000001', '91000000-0000-0000-0000-000000000002', '93000000-0000-0000-0000-000000000001', '94000000-0000-0000-0000-000000000001', (timezone('Asia/Shanghai', now()))::date, 'confirmed', 'internal'),
-  ('96000000-0000-0000-0000-000000000003', '92000000-0000-0000-0000-000000000001', '91000000-0000-0000-0000-000000000001', '93000000-0000-0000-0000-000000000001', '94000000-0000-0000-0000-000000000001', (timezone('Asia/Shanghai', now()))::date - 1, 'submitted', 'internal');
+  ('96000000-0000-0000-0000-000000000001', '92000000-0000-0000-0000-000000000001', '91000000-0000-0000-0000-000000000001', '93000000-0000-0000-0000-000000000001', '94000000-0000-0000-0000-000000000001', (timezone('UTC', now()))::date, 'submitted', 'internal'),
+  ('96000000-0000-0000-0000-000000000002', '92000000-0000-0000-0000-000000000001', '91000000-0000-0000-0000-000000000002', '93000000-0000-0000-0000-000000000001', '94000000-0000-0000-0000-000000000001', (timezone('UTC', now()))::date, 'confirmed', 'internal'),
+  ('96000000-0000-0000-0000-000000000003', '92000000-0000-0000-0000-000000000001', '91000000-0000-0000-0000-000000000001', '93000000-0000-0000-0000-000000000001', '94000000-0000-0000-0000-000000000001', (timezone('UTC', now()))::date - 1, 'submitted', 'internal');
 
 create temporary table upload_lifecycle_ids (
   current_session_id uuid,
@@ -104,13 +104,13 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000001', true);
 
 select is(
-  public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')->>'reportId',
+  public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')->>'reportId',
   '96000000-0000-0000-0000-000000000001',
   'today reuses the unique daily report shell'
 );
 
 insert into upload_lifecycle_ids (abandoned_session_id)
-select (public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
+select (public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
 
 select lives_ok(
   $$select public.begin_entry_attachment_upload(
@@ -142,7 +142,7 @@ select is(
 set local role authenticated;
 
 insert into upload_lifecycle_ids (current_session_id)
-select (public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
+select (public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
 
 select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000002', true);
 select throws_ok(
@@ -168,7 +168,7 @@ select ok(
 );
 select throws_ok(
   $$select * from public.save_daily_report(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal',
+    (timezone('UTC', now()))::date, 'submitted', 'internal',
     jsonb_build_array(jsonb_build_object(
       'dailyObjective', 'Current objective',
       'linkedKeyResultId', '95000000-0000-0000-0000-000000000001',
@@ -200,13 +200,13 @@ select public.abandon_daily_report_upload_session(
 update upload_lifecycle_ids
 set current_session_id = (
   public.begin_daily_report_upload_session(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal'
+    (timezone('UTC', now()))::date, 'submitted', 'internal'
   )->>'sessionId'
 )::uuid
 where current_session_id is not null;
 select lives_ok(
   $$select * from public.save_daily_report(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal',
+    (timezone('UTC', now()))::date, 'submitted', 'internal',
     jsonb_build_array(jsonb_build_object(
       'dailyObjective', 'Current objective',
       'linkedKeyResultId', '95000000-0000-0000-0000-000000000001',
@@ -256,7 +256,7 @@ select ok(
 );
 
 insert into upload_lifecycle_ids (retired_session_id)
-select (public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
+select (public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
 select ok(
   (select retired_session_id from upload_lifecycle_ids where retired_session_id is not null) is not null,
   'an editable report can begin an upload session before refresh'
@@ -270,7 +270,7 @@ select lives_ok(
   'the session owns a pending attachment cleanup target'
 );
 insert into upload_lifecycle_ids (fresh_session_id)
-select (public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
+select (public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
 set local role postgres;
 select is(
   (select status from public.daily_report_upload_sessions where id = (select retired_session_id from upload_lifecycle_ids where retired_session_id is not null)),
@@ -295,7 +295,7 @@ select public.abandon_daily_report_upload_session(
 update upload_lifecycle_ids
 set fresh_session_id = (
   public.begin_daily_report_upload_session(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal'
+    (timezone('UTC', now()))::date, 'submitted', 'internal'
   )->>'sessionId'
 )::uuid
 where fresh_session_id is not null;
@@ -326,7 +326,7 @@ where id = '91000000-0000-0000-0000-000000000001';
 set local role authenticated;
 select throws_ok(
   $$select * from public.save_daily_report(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal',
+    (timezone('UTC', now()))::date, 'submitted', 'internal',
     jsonb_build_array(jsonb_build_object(
       'dailyObjective', 'Clearance objective',
       'linkedKeyResultId', '95000000-0000-0000-0000-000000000001',
@@ -353,7 +353,7 @@ select public.abandon_daily_report_upload_session(
 );
 
 insert into upload_lifecycle_ids (associated_session_id)
-select (public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
+select (public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
 with started as (
   select public.begin_entry_attachment_upload(
     '96000000-0000-0000-0000-000000000001',
@@ -374,7 +374,7 @@ select lives_ok(
   'abandonment keeps a session recoverable when it already owns a finalized upload'
 );
 insert into upload_lifecycle_ids (resumed_session_id)
-select (public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
+select (public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
 select is(
   (select resumed_session_id::text from upload_lifecycle_ids where resumed_session_id is not null),
   (select associated_session_id::text from upload_lifecycle_ids where associated_session_id is not null),
@@ -382,7 +382,7 @@ select is(
 );
 select lives_ok(
   $$select * from public.save_daily_report(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal',
+    (timezone('UTC', now()))::date, 'submitted', 'internal',
     jsonb_build_array(jsonb_build_object(
       'dailyObjective', 'Association objective',
       'linkedKeyResultId', '95000000-0000-0000-0000-000000000001',
@@ -406,7 +406,7 @@ select throws_ok(
 );
 
 insert into upload_lifecycle_ids (cancel_session_id)
-select (public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
+select (public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
 select throws_ok(
   $$select public.adopt_daily_report_revision_attachments(
     '96000000-0000-0000-0000-000000000001',
@@ -519,7 +519,7 @@ where id = (select associated_attachment_id from upload_lifecycle_ids where asso
 set local role authenticated;
 select is(
   public.begin_daily_report_upload_session(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal'
+    (timezone('UTC', now()))::date, 'submitted', 'internal'
   )->>'sessionId',
   (select cancel_session_id::text from upload_lifecycle_ids where cancel_session_id is not null),
   'refresh resumes the active session that still owns a deleted cleanup target'
@@ -553,7 +553,7 @@ select is(
 );
 set local role authenticated;
 insert into upload_lifecycle_ids (edit_session_id)
-select (public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
+select (public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
 select lives_ok(
   $$select public.adopt_daily_report_revision_attachments(
     '96000000-0000-0000-0000-000000000001',
@@ -564,7 +564,7 @@ select lives_ok(
 );
 select lives_ok(
   $$select * from public.save_daily_report(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal',
+    (timezone('UTC', now()))::date, 'submitted', 'internal',
     jsonb_build_array(jsonb_build_object(
       'dailyObjective', 'Edited objective',
       'linkedKeyResultId', '95000000-0000-0000-0000-000000000001',
@@ -591,22 +591,22 @@ select ok(
   private.daily_report_is_editable(
     '96000000-0000-0000-0000-000000000001',
     '91000000-0000-0000-0000-000000000001',
-    (timezone('Asia/Shanghai', now()))::date
+    (timezone('UTC', now()))::date
   ),
   'the owner can update an unreviewed report dated today'
 );
 
 select throws_ok(
-  $$select public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'confirmed', 'internal')$$,
+  $$select public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'confirmed', 'internal')$$,
   '42501', 'Authors cannot confirm daily reports',
   'an author cannot forge confirmation while opening an upload session'
 );
 
 insert into upload_lifecycle_ids (forged_session_id)
-select (public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
+select (public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
 select throws_ok(
   $$select * from public.save_daily_report(
-    (timezone('Asia/Shanghai', now()))::date, 'confirmed', 'internal',
+    (timezone('UTC', now()))::date, 'confirmed', 'internal',
     jsonb_build_array(jsonb_build_object(
       'dailyObjective', 'Forged confirmation',
       'linkedKeyResultId', '95000000-0000-0000-0000-000000000001',
@@ -624,7 +624,7 @@ select lives_ok(
 );
 
 insert into upload_lifecycle_ids (orphan_session_id)
-select (public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
+select (public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
 insert into upload_lifecycle_ids (orphan_attachment_id)
 select (public.begin_entry_attachment_upload(
   '96000000-0000-0000-0000-000000000001',
@@ -633,7 +633,7 @@ select (public.begin_entry_attachment_upload(
 )->>'id')::uuid;
 select throws_ok(
   $$select * from public.save_daily_report(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal',
+    (timezone('UTC', now()))::date, 'submitted', 'internal',
     jsonb_build_array(jsonb_build_object(
       'dailyObjective', 'No orphan objective',
       'linkedKeyResultId', '95000000-0000-0000-0000-000000000001',
@@ -671,23 +671,23 @@ select is(
 );
 set local role authenticated;
 select is(
-  public.find_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date),
+  public.find_daily_report_upload_session((timezone('UTC', now()))::date),
   null::jsonb,
   'a side-effect-free session lookup returns null after cleanup without creating a shell or session'
 );
 
 select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000004', true);
 select lives_ok(
-  $$select public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'public')$$,
+  $$select public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'public')$$,
   'a public-clearance employee can start a public daily report'
 );
 select is(
-  (select classification::text from public.daily_reports where author_id = auth.uid() and report_date = (timezone('Asia/Shanghai', now()))::date),
+  (select classification::text from public.daily_reports where author_id = auth.uid() and report_date = (timezone('UTC', now()))::date),
   'public',
   'the public-clearance employee report shell uses the safe public classification'
 );
 select is(
-  (select status::text from public.daily_reports where author_id = auth.uid() and report_date = (timezone('Asia/Shanghai', now()))::date),
+  (select status::text from public.daily_reports where author_id = auth.uid() and report_date = (timezone('UTC', now()))::date),
   'draft',
   'starting an upload never exposes an incomplete shell as a submitted report'
 );
@@ -703,7 +703,7 @@ select ok(
 );
 
 insert into upload_lifecycle_ids (locked_session_id)
-select (public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
+select (public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')->>'sessionId')::uuid;
 with started as (
   select public.begin_entry_attachment_upload(
     '96000000-0000-0000-0000-000000000001',
@@ -734,7 +734,7 @@ select throws_ok(
 );
 select throws_ok(
   $$select * from public.save_daily_report(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal',
+    (timezone('UTC', now()))::date, 'submitted', 'internal',
     jsonb_build_array(jsonb_build_object(
       'dailyObjective', 'Locked objective',
       'linkedKeyResultId', '95000000-0000-0000-0000-000000000001',
@@ -776,7 +776,7 @@ select ok(
   not private.daily_report_is_editable(
     '96000000-0000-0000-0000-000000000001',
     '91000000-0000-0000-0000-000000000001',
-    (timezone('Asia/Shanghai', now()))::date
+    (timezone('UTC', now()))::date
   ),
   'a confirmed report is no longer editable by its author'
 );
@@ -785,20 +785,20 @@ select ok(
   not private.daily_report_is_editable(
     '96000000-0000-0000-0000-000000000002',
     '91000000-0000-0000-0000-000000000002',
-    (timezone('Asia/Shanghai', now()))::date
+    (timezone('UTC', now()))::date
   ),
   'a confirmed report is not editable'
 );
 
 select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000002', true);
 select throws_ok(
-  $$select public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal')$$,
+  $$select public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal')$$,
   '42501', 'Daily report is locked',
   'a confirmed report is locked immediately'
 );
 
 select throws_ok(
-  $$select public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date - 1, 'submitted', 'internal')$$,
+  $$select public.begin_daily_report_upload_session((timezone('UTC', now()))::date - 1, 'submitted', 'internal')$$,
   '42501', 'Daily report is locked',
   'a prior-day report is locked'
 );

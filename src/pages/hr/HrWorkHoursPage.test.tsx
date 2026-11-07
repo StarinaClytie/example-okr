@@ -29,13 +29,13 @@ function makeRow(overrides: Partial<HrWorkHourRow> = {}): HrWorkHourRow {
   };
 }
 
-function renderPage(rows: HrWorkHourRow[]) {
+function renderPage(rows: HrWorkHourRow[], calendar: { businessTimeZone?: string; weekStartsOn?: 0 | 1 } = {}) {
   const repository = {
     mode: 'supabase',
     getHrWorkHours: vi.fn(async () => ({ ok: true, data: rows })),
   } as unknown as OkrRepository;
   const authValue: AuthContextValue = {
-    status: 'ready', mode: 'supabase', currentUser: hrUser, selectableUsers: [], selectUser: vi.fn(), signOut: vi.fn(),
+    status: 'ready', mode: 'supabase', currentUser: { ...hrUser, ...calendar }, selectableUsers: [], selectUser: vi.fn(), signOut: vi.fn(),
   };
   render(
     <AuthContext.Provider value={authValue}>
@@ -64,6 +64,15 @@ describe('HrWorkHoursPage', () => {
     expect(screen.getByLabelText('开始日期')).toHaveValue('2026-08-24');
     expect(screen.getByLabelText('结束日期')).toHaveValue('2026-08-30');
     expect(await screen.findByRole('table')).toBeVisible();
+  });
+
+  it('starts Sunday weeks with Sunday table columns', async () => {
+    renderPage([makeRow()], { businessTimeZone: 'UTC', weekStartsOn: 0 });
+    expect(screen.getByLabelText('开始日期')).toHaveValue('2026-08-23');
+    expect(screen.getByLabelText('结束日期')).toHaveValue('2026-08-29');
+    await userEvent.click(screen.getByRole('tab', { name: '每周汇总' }));
+    const headers = within(await screen.findByRole('table')).getAllByRole('columnheader');
+    expect(headers.slice(2, 9).map((header) => header.textContent)).toEqual(['周日', '周一', '周二', '周三', '周四', '周五', '周六']);
   });
 
   it('shows the empty state when there are no records', async () => {

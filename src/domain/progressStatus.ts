@@ -1,4 +1,4 @@
-import type { KeyResult, Milestone, Objective, ProgressSnapshot, ProgressStatus, Risk } from './types';
+import type { KeyResult, Milestone, Objective, ProgressSnapshot, ProgressStatus, Risk, User } from './types';
 
 export type StatusReason =
   | { code: 'behind_plan'; severity: 'at_risk' | 'off_track'; actual: number; planned: number; gap: number }
@@ -19,6 +19,7 @@ export interface ProgressStatusInput {
 }
 
 export interface ExecutionStatusData {
+  currentUser?: User;
   keyResults: readonly KeyResult[];
   objectives: readonly Objective[];
   milestones: readonly Milestone[];
@@ -64,9 +65,9 @@ export function deriveProgressStatus(input: ProgressStatusInput): ProgressStatus
   return { status, reasons };
 }
 
-export function currentBusinessDate(now = new Date()): string {
+export function currentBusinessDate(now = new Date(), timeZone = 'Asia/Shanghai'): string {
   const parts = new Intl.DateTimeFormat('en', {
-    timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
   }).formatToParts(now);
   const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
   return `${value('year')}-${value('month')}-${value('day')}`;
@@ -84,7 +85,7 @@ function plannedProgressForKeyResult(data: ExecutionStatusData, keyResult: KeyRe
 export function deriveKeyResultExecutionStatus(
   data: ExecutionStatusData,
   keyResult: KeyResult,
-  evaluationDate = currentBusinessDate(),
+  evaluationDate = currentBusinessDate(new Date(), data.currentUser?.businessTimeZone),
 ): ProgressStatusResult {
   return deriveProgressStatus({
     actualProgress: keyResult.progress,
@@ -104,7 +105,7 @@ export function deriveKeyResultExecutionStatus(
 export function deriveObjectiveExecutionStatus(
   data: ExecutionStatusData,
   objective: Objective,
-  evaluationDate = currentBusinessDate(),
+  evaluationDate = currentBusinessDate(new Date(), data.currentUser?.businessTimeZone),
 ): ProgressStatusResult {
   return deriveProgressStatus({
     actualProgress: objective.progress,
@@ -123,7 +124,7 @@ export function deriveObjectiveExecutionStatus(
 
 export function deriveExecutionStatuses(
   data: ExecutionStatusData,
-  evaluationDate = currentBusinessDate(),
+  evaluationDate = currentBusinessDate(new Date(), data.currentUser?.businessTimeZone),
 ): ExecutionStatusIndex {
   return {
     keyResults: new Map(data.keyResults.map((keyResult) => [

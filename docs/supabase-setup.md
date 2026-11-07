@@ -184,3 +184,13 @@ For operation, monitor database/storage/egress against your actual plan, back up
 ## 10. Recorded verification
 
 See [the verification record](deployment-verification.md) for the actual local results and remaining hosted/SMTP/OSS checks. A successful local installation is not a claim that your hosted deployment has been validated.
+
+## Organization calendar
+
+Apply the repository migrations before deploying the updated frontend. Migration `20261107233135_organization_calendar.sql` adds the organization calendar and updates the existing database date checks without changing stored report dates. Back up an existing database through your normal upgrade process before applying migrations.
+
+After sign-in as an active administrator, open **Settings → System** and set an IANA timezone such as `Europe/London`, `America/New_York`, or `Asia/Singapore`, then choose Sunday or Monday as the first day of the week. These settings belong to the organization and are separate from each member's interface language or device timezone. Named timezones account for daylight-saving changes.
+
+Fresh organizations default to **UTC / Monday**. Existing organizations retain **Asia/Shanghai / Monday** when upgraded. Daily-report creation/editability and attachment upload authorization use the same server-side organization date; progress-date guards and HR weekly date ranges follow it too. HR daily dates remain the stored date values; selecting a different timezone never rewrites historical entries.
+
+A change takes effect on the server immediately and can change which unconfirmed report is editable as today's report. Confirmed reports remain locked. Ask other members with open sessions to refresh so their interface uses the updated calendar. The demo supports trying these settings within the current page session; demo changes reset when the page is reloaded.

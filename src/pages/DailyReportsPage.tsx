@@ -67,7 +67,7 @@ export const DailyReportsPage = forwardRef<DailyReportsPageHandle, { dataReposit
   const detailTriggerRef = useRef<HTMLButtonElement>(null);
   const restoreDetailFocus = useRef(false);
   const detailRequestId = useRef(0);
-  const dashboard = useDashboardData(dataRepository, currentUser?.id);
+  const dashboard = useDashboardData(dataRepository, currentUser?.id, currentUser);
   const [searchParams] = useSearchParams();
   useImperativeHandle(ref, () => ({ openReportDetail: (reportId: string) => openReportDetail(reportId) }));
   useEffect(() => {
@@ -101,7 +101,7 @@ export const DailyReportsPage = forwardRef<DailyReportsPageHandle, { dataReposit
     return <section className="business-page" aria-labelledby="daily-reports-page-title"><PageHeader title={t('daily.title')} description={t('daily.description')} /><RepositoryDataState state={dashboard} /></section>;
   }
   const currentUserId = currentUser.id;
-  const businessDate = currentBusinessDate();
+  const businessDate = currentBusinessDate(new Date(), currentUser?.businessTimeZone);
   const data = dashboard.data;
   const currentLocalReports = localReports.ownerId === currentUser.id ? localReports.reports : [];
   const localReportIds = new Set(currentLocalReports.map((report) => report.id));
@@ -249,7 +249,7 @@ export const DailyReportsPage = forwardRef<DailyReportsPageHandle, { dataReposit
 
   async function openDailyReportEditor(report: DailyReport, button: HTMLButtonElement) {
     const editable = can(currentUser, 'daily_report.edit', report).allowed
-      && canEditDailyReport(currentUserId, report, currentBusinessDate());
+      && canEditDailyReport(currentUserId, report, currentBusinessDate(new Date(), currentUser?.businessTimeZone));
     if (!editable) {
       setNotice('daily.reportLocked');
       return;
