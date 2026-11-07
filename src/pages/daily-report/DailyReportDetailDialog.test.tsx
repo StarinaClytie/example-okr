@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { OkrRepository } from '../../data/types';
 import type { DailyReportDetail } from '../../domain/types';
+import { AuthProvider } from '../../auth/AuthContext';
+import { LocaleProvider } from '../../i18n/LocaleProvider';
 import { DailyReportDetailDialog } from './DailyReportDetailDialog';
 
 const { exportDailyReportWord, printDailyReportPdf } = vi.hoisted(() => ({
@@ -225,10 +227,23 @@ describe('DailyReportDetailDialog', () => {
     await user.click(wordButton);
 
     expect(exportDailyReportWord).toHaveBeenCalledTimes(1);
-    expect(exportDailyReportWord).toHaveBeenCalledWith(detail);
+    expect(exportDailyReportWord).toHaveBeenCalledWith(detail, 'zh-CN');
     expect(wordButton).toBeDisabled();
     completeExport?.();
     expect(await screen.findByRole('button', { name: '导出 Word' })).toBeEnabled();
+  });
+
+  it('passes the current English interface language to both export actions', async () => {
+    window.localStorage.setItem('example-okr.locale', 'en');
+    try {
+      const detail = reportDetail();
+      const repo = repository();
+      render(<AuthProvider><LocaleProvider repository={repo}><DailyReportDetailDialog detail={detail} repository={repo} onClose={vi.fn()} onConfirmed={vi.fn()} /></LocaleProvider></AuthProvider>);
+      await userEvent.click(screen.getByRole('button', { name: 'Export Word' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Export PDF' }));
+      expect(exportDailyReportWord).toHaveBeenCalledWith(detail, 'en');
+      expect(printDailyReportPdf).toHaveBeenCalledWith(detail, 'en');
+    } finally { window.localStorage.removeItem('example-okr.locale'); }
   });
 
   it('keeps the dialog open and presents a typed PDF popup error', async () => {

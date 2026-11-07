@@ -66,6 +66,7 @@ function serialisedText(value: unknown) {
 describe('daily report exports', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    toBlob.mockClear();
     toBlob.mockResolvedValue(new Blob(['report']));
   });
 
@@ -94,8 +95,29 @@ describe('daily report exports', () => {
     expect(exportedContent).toContain('7.5');
     expect(exportedContent).toContain('结果清晰。');
     expect(exportedContent).toContain('验收记录.pdf');
+    expect(exportedContent).toContain('附件 · 内部 · 上传完成');
     expect(exportedContent).not.toContain('storage.example');
     expect(exportedContent).not.toContain('download-token');
+  });
+
+  it('exports English Word labels and language while preserving authored content', async () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:report');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    await exportDailyReportWord(detail(), 'en');
+    expect((click.mock.instances[0] as HTMLAnchorElement).download).toBe('Daily Report-王芳-2026-08-24.docx');
+    const content = serialisedText(toBlob.mock.calls[0][0]);
+    for (const text of ['Daily Report', 'Submitted', 'Hours', '7.5 hours', 'Report items', 'Work description', 'Comments', '完成导出功能', '结果清晰。', 'Attachment · Internal · Upload complete', 'en-US']) expect(content).toContain(text);
+    for (const text of ['当日 O', '已提交', '关联季度 KR', '日报事项']) expect(content).not.toContain(text);
+  });
+
+  it('exports English PDF labels, document language and escaped title without translating prose', () => {
+    const write = vi.fn();
+    vi.spyOn(window, 'open').mockReturnValue({ document: { open: vi.fn(), write, close: vi.fn() }, addEventListener: vi.fn(), print: vi.fn() } as unknown as Window);
+    printDailyReportPdf(detail({authorName: 'Alex & Taylor'}), 'en');
+    const html = write.mock.calls[0][0] as string;
+    for (const text of ['lang="en"', '<title>Daily Report-Alex &amp; Taylor-2026-08-24</title>', 'Submitted', 'Work description', '7.5 hours', '完成导出功能', '结果清晰。']) expect(html).toContain(text);
+    for (const text of ['当日 O', '已提交', '日报事项']) expect(html).not.toContain(text);
   });
 
   it('opens a same-origin blank print window without disowning its usable handle', () => {
