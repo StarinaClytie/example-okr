@@ -1,3 +1,4 @@
+import { translateDemoFixture } from './englishDemo';
 import type { ActiveShare } from '../domain/permissions';
 import type { CollaborationRelation, DocumentRecord } from '../domain/types';
 
@@ -106,3 +107,6 @@ export const activeShares: ActiveShare[] = [
     allowedActions: ['daily_report.read_body'],
   },
 ];
+
+// English is a public-demo seed profile, never a translation of user input.
+translateDemoFixture({ attachments, documents, collaborationRelations, activeShares });
