@@ -10,7 +10,7 @@ Example OKR is a bilingual workspace for teams that need to explain how daily wo
 
 1. Open the demo as **Employee** and inspect an owned KR under **OKR Management**.
 2. Switch to **Project Leader** to compare planning and review views, then **HR** to inspect its work-hour view.
-3. Use the navigation language control to switch between English and Chinese. Sample business content stays in its entered language.
+3. Use the navigation language control to switch between English and Chinese. The public demo opens in English and uses fictional English names, departments, and business examples. Your language choice is remembered; real user-entered content is never automatically translated.
 
 Demo edits reset when you refresh. Sample dates are illustrative. The hosted demo uses `#/…` links so that shared pages and refreshes work on static hosting.
 

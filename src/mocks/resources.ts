@@ -1,3 +1,4 @@
+import { translateDemoFixture } from './englishDemo';
 import type { Resource, ResourceDetail, ResourceProblem } from '../data/types';
 
 // Representative demo inventory. Mutations remain unsupported in demo mode
@@ -145,3 +146,5 @@ export function getMockResourceDetail(resourceId: string): ResourceDetail | null
   }));
   return { ...resource, attachments, problems };
 }
+
+translateDemoFixture({ mockResources, problemsByResource, attachmentNames });

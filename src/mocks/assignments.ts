@@ -1,3 +1,4 @@
+import { translateDemoFixture } from './englishDemo';
 import type { KrAssignment, KrProgressUpdate } from '../domain/types';
 
 export const krAssignments: KrAssignment[] = [
@@ -68,3 +69,6 @@ export const krProgressUpdates: KrProgressUpdate[] = [
     createdAt: '2026-08-12T10:00:00Z',
   },
 ];
+
+// English is a public-demo seed profile, never a translation of user input.
+translateDemoFixture({ krAssignments, krProgressUpdates });

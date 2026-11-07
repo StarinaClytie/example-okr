@@ -1,3 +1,4 @@
+import { translateDemoFixture } from './englishDemo';
 import type { DailyReport, WeeklyReport, WorkloadEntry } from '../domain/types';
 
 export const dailyReports: DailyReport[] = [
@@ -117,3 +118,6 @@ export const workloads: WorkloadEntry[] = [
     hrVisibility: 'hours_only',
   },
 ];
+
+// English is a public-demo seed profile, never a translation of user input.
+translateDemoFixture({ dailyReports, weeklyReports, workloads });
