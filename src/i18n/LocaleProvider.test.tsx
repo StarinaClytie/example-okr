@@ -34,7 +34,7 @@ describe('application locale', () => {
     window.history.replaceState({}, '', '/dashboard');
   });
 
-  it('starts a first visit synchronously in Chinese', () => {
+  it('starts a first visit synchronously in Chinese for a Chinese-language browser', () => {
     render(<App />);
 
     expect(screen.getByRole('button', { name: '切换为英文' })).toBeVisible();
