@@ -1,5 +1,5 @@
 import { attachmentRateLimiters, defaultAttachmentRateLimits, type AttachmentRateLimitConfig } from './rateLimit.js';
-import express, { type Request, type Response } from 'express';
+import express, { type Request, type Response, type NextFunction } from 'express';
 import type { AttachmentKind, AttachmentOperation, AuthorizedAttachment, OssObjectStore, RpcResult } from './types.js';
 
 export interface AttachmentApiDependencies {
@@ -12,9 +12,17 @@ export interface AttachmentApiDependencies {
 
 function attachmentId(req: Request): string { return String(req.params.attachmentId || ''); }
 
+function failureStatus(status: number | undefined, fallback: number): number {
+  return typeof status === 'number' && Number.isInteger(status) && status >= 400 && status <= 599 ? status : fallback;
+}
+
 export function createApp(deps: AttachmentApiDependencies, rateLimits: AttachmentRateLimitConfig = defaultAttachmentRateLimits) {
   const app = express();
   app.disable('x-powered-by');
+  app.use((_req, res, next) => {
+    res.set({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+    next();
+  });
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
   const limits = attachmentRateLimiters(rateLimits);
@@ -33,7 +41,10 @@ export function createApp(deps: AttachmentApiDependencies, rateLimits: Attachmen
     const caller = res.locals.attachmentCaller as { token: string; userId: string };
     const authorized = await deps.authorize(caller.token, operation, attachmentId(req), kind);
     if (!authorized.ok || !authorized.data) {
-      res.status(authorized.status || 403).json({ error: authorized.message || 'Forbidden' });
+      const status = failureStatus(authorized.status, 403);
+      const message = status === 401 ? 'Unauthorized' : status === 403 ? 'Forbidden'
+        : status === 404 ? 'Attachment not found' : status === 400 ? 'Invalid attachment request' : 'Attachment authorization failed';
+      res.status(status).json({ error: message });
       return null;
     }
     return authorized.data;
@@ -57,7 +68,7 @@ export function createApp(deps: AttachmentApiDependencies, rateLimits: Attachmen
           res.status(422).json({ error: 'Uploaded object metadata mismatch' }); return;
         }
         const confirmed = await deps.confirmUpload(target.id, object.etag, target.mimeType, target.byteSize, kind);
-        if (!confirmed.ok) { res.status(confirmed.status || 500).json({ error: confirmed.message || 'Finalization failed' }); return; }
+        if (!confirmed.ok) { res.status(failureStatus(confirmed.status, 500)).json({ error: 'Finalization failed' }); return; }
         res.json({ id: target.id, state: 'uploaded' });
       } catch { res.status(502).json({ error: 'OSS verification failed' }); }
     });
@@ -76,7 +87,7 @@ export function createApp(deps: AttachmentApiDependencies, rateLimits: Attachmen
         const target = await context(req, res, 'delete', kind); if (!target) return;
         if (!target.alreadyDeleted) await deps.oss.delete(target.path);
         const confirmed = await deps.confirmDeletion(target.id, kind);
-        if (!confirmed.ok) { res.status(confirmed.status || 500).json({ error: confirmed.message || 'Deletion confirmation failed' }); return; }
+        if (!confirmed.ok) { res.status(failureStatus(confirmed.status, 500)).json({ error: 'Deletion confirmation failed' }); return; }
         res.status(204).end();
       } catch { res.status(502).json({ error: 'OSS deletion failed' }); }
     });
@@ -84,5 +95,16 @@ export function createApp(deps: AttachmentApiDependencies, rateLimits: Attachmen
 
   registerAttachmentRoutes('/api/attachments', 'daily');
   registerAttachmentRoutes('/api/resource-attachments', 'resource');
+  app.use((_req, res) => { res.status(404).json({ error: 'Not found' }); });
+  // Express otherwise emits HTML (and development stack traces) for parser,
+  // route-decoding and middleware errors. Never serialize an upstream error.
+  app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) { next(error); return; }
+    const suppliedStatus = error && typeof error === 'object' ? (error as { status?: unknown }).status : undefined;
+    const status = typeof suppliedStatus === 'number' && Number.isInteger(suppliedStatus) && suppliedStatus >= 400 && suppliedStatus < 500 ? suppliedStatus : 500;
+    const message = status === 413 ? 'Request body too large' : status === 415 ? 'Unsupported request encoding'
+      : status < 500 ? 'Invalid request' : 'Internal server error';
+    res.status(status).json({ error: message });
+  });
   return app;
 }

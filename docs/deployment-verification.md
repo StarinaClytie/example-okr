@@ -66,3 +66,9 @@ The attachment API now applies a shared process-level admission budget before id
 Validation: **686 application tests across 78 files passed**, frontend/typecheck and attachment server builds passed, and dependency audit reported **zero vulnerabilities**. Independent review found no high/medium issues. No database schema or real cloud service was changed by this update.
 
 Quotas are process-local and reset on restart; multi-instance deployments need gateway or shared-store enforcement. The server keeps proxy trust disabled. See the installation guide for settings and proxy requirements.
+
+## 2026-11-07 safe attachment error responses
+
+The attachment API now returns fixed JSON messages for parser, routing, middleware and database-operation failures instead of forwarding upstream messages or development stack traces. Failed RPC results cannot use success/redirect status codes. Responses, including signed-URL JSON, carry `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
+
+Validation: **694 tests in 79 files passed**, frontend/typecheck and attachment server builds passed, dependency audit reported **zero vulnerabilities**, and independent review found no high/medium issues. Eight new regression cases first failed against the previous implementation and passed after the fix; they cover malformed and oversized JSON, encodings, route parameters, unknown endpoints, database details, invalid failure statuses, unexpected middleware errors and signed-URL response headers. No database schema, public demo behavior or live cloud service was changed.
