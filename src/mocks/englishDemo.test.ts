@@ -17,7 +17,7 @@ it('provides a fully English seeded demo including names, departments, reports a
   expect(english.users.find(u => u.id === 'user-project-leader')?.name).toBe('Alex Morgan');
   expect(english.users.find(u => u.id === 'user-hr')?.department).toBe('People Operations');
   expect(english.projects.map(p => p.id)).toEqual(mockData.projects.map(p => p.id));
-  expect(JSON.stringify(mockData)).not.toBe(JSON.stringify(english));
+  expect(mockData.users.find(u => u.id === 'user-project-leader')?.name).toBe('李然');
   expect(original).toContain('李然');
 });
 it('does not translate data when the public demo profile is disabled', () => {
