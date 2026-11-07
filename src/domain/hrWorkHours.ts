@@ -15,9 +15,9 @@ export interface HrHourFilters {
   krId?: string;
 }
 
-function shanghaiParts(now: Date): { year: number; month: number; day: number; weekday: number } {
+function calendarParts(now: Date, timeZone: string): { year: number; month: number; day: number; weekday: number } {
   const parts = new Intl.DateTimeFormat('en', {
-    timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short',
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short',
   }).formatToParts(now);
   const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value ?? 0);
   const weekdayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
@@ -29,10 +29,10 @@ function toDateString(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-/** Monday-based current week in Asia/Shanghai. */
-export function currentWeekRange(now = new Date()): { from: string; to: string } {
-  const { year, month, day, weekday } = shanghaiParts(now);
-  const mondayOffset = weekday === 0 ? -6 : 1 - weekday;
+/** Calendar arithmetic runs in UTC after extracting the organization civil date. */
+export function currentWeekRange(now = new Date(), timeZone = 'Asia/Shanghai', weekStartsOn: 0 | 1 = 1): { from: string; to: string } {
+  const { year, month, day, weekday } = calendarParts(now, timeZone);
+  const mondayOffset = -((weekday - weekStartsOn + 7) % 7);
   const monday = new Date(Date.UTC(year, month - 1, day + mondayOffset));
   const sunday = new Date(monday.getTime() + 6 * 86400000);
   const fmt = (d: Date) => toDateString(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());

@@ -52,14 +52,14 @@ insert into public.project_members (organization_id, project_id, profile_id) val
 insert into public.objectives (id, organization_id, project_id, owner_id, title, classification, start_date, due_date) values
   ('74000000-0000-0000-0000-000000000001', '72000000-0000-0000-0000-000000000001', '73000000-0000-0000-0000-000000000001', '71000000-0000-0000-0000-000000000001', 'Storage Objective', 'confidential', current_date, current_date + 1);
 insert into public.daily_reports (id, organization_id, author_id, project_id, objective_id, report_date, status, classification) values
-  ('75000000-0000-0000-0000-000000000001', '72000000-0000-0000-0000-000000000001', '71000000-0000-0000-0000-000000000001', '73000000-0000-0000-0000-000000000001', '74000000-0000-0000-0000-000000000001', (timezone('Asia/Shanghai', now()))::date, 'submitted', 'confidential');
+  ('75000000-0000-0000-0000-000000000001', '72000000-0000-0000-0000-000000000001', '71000000-0000-0000-0000-000000000001', '73000000-0000-0000-0000-000000000001', '74000000-0000-0000-0000-000000000001', (timezone('UTC', now()))::date, 'submitted', 'confidential');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '71000000-0000-0000-0000-000000000001', true);
 
 create temporary table storage_upload_session (id uuid not null);
 insert into storage_upload_session (id)
-select (public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'confidential')->>'sessionId')::uuid;
+select (public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'confidential')->>'sessionId')::uuid;
 
 select lives_ok(
   $$select public.begin_entry_attachment_upload('75000000-0000-0000-0000-000000000001', (select id from storage_upload_session), 1, 'raw-proof.pdf', 'application/pdf', 128, 'confidential', '验收结果图')$$,

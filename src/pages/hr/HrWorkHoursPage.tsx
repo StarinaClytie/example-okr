@@ -47,9 +47,11 @@ function uniqueOptions(
 export function HrWorkHoursPage({ dataRepository = repository }: { dataRepository?: OkrRepository }) {
   const { t } = useLocale();
   const { currentUser } = useAuth();
-  const defaultWeek = useMemo(() => currentWeekRange(), []);
+  const defaultWeek = useMemo(() => currentWeekRange(new Date(), currentUser?.businessTimeZone, currentUser?.weekStartsOn), [currentUser?.id, currentUser?.businessTimeZone, currentUser?.weekStartsOn]);
   const [fromDate, setFromDate] = useState(defaultWeek.from);
   const [toDate, setToDate] = useState(defaultWeek.to);
+  const weekDays = currentUser?.weekStartsOn === 0 ? [WEEK_DAYS[6], ...WEEK_DAYS.slice(0, 6)] : WEEK_DAYS;
+  useEffect(() => { setFromDate(defaultWeek.from); setToDate(defaultWeek.to); }, [defaultWeek]);
   const [rows, setRows] = useState<HrWorkHourRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>('daily');
@@ -221,7 +223,7 @@ export function HrWorkHoursPage({ dataRepository = repository }: { dataRepositor
               <tr>
                 <th>{t('hrHours.member')}</th>
                 <th>{t('hrHours.role')}</th>
-                {WEEK_DAYS.map((day) => <th key={day}>{t(dayKey[day])}</th>)}
+                {weekDays.map((day) => <th key={day}>{t(dayKey[day])}</th>)}
                 <th>{t('hrHours.total')}</th>
                 <th />
               </tr>
@@ -232,7 +234,7 @@ export function HrWorkHoursPage({ dataRepository = repository }: { dataRepositor
                   <tr>
                     <td>{summary.displayName}</td>
                     <td>{summary.role ? t(roleLabels[summary.role]) : '—'}</td>
-                    {WEEK_DAYS.map((day) => <td key={day}>{summary.daily[day] ?? 0}</td>)}
+                    {weekDays.map((day) => <td key={day}>{summary.daily[day] ?? 0}</td>)}
                     <td>{summary.total}</td>
                     <td>
                       <button type="button" className="text-button" aria-expanded={expanded.has(summary.userId)} onClick={() => toggleExpanded(summary.userId)}>

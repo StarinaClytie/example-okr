@@ -540,7 +540,7 @@ export function can(user: User | undefined, action: Action, resource?: Permissio
 
   if (action === 'daily_report.edit') {
     const editable = 'date' in resource && 'status' in resource && 'authorId' in resource
-      && canEditDailyReport(user.id, resource, currentBusinessDate());
+      && canEditDailyReport(user.id, resource, currentBusinessDate(new Date(), user.businessTimeZone));
     return editable && context.ownerId === user.id ? allow('可管理本人日报') : deny();
   }
 

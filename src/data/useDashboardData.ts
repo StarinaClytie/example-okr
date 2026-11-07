@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { User } from '../domain/types';
 import type { DashboardData } from '../data/types';
 import type { OkrRepository, RepositoryErrorCode } from './types';
 
@@ -19,7 +20,7 @@ function initialState(repository: OkrRepository, userId: string | undefined): In
     : { repository, userId, status: 'loading' };
 }
 
-export function useDashboardData(repository: OkrRepository, userId: string | undefined): DashboardLoadState {
+export function useDashboardData(repository: OkrRepository, userId: string | undefined, calendar?: Pick<User, 'businessTimeZone' | 'weekStartsOn'>): DashboardLoadState {
   const [state, setState] = useState<InternalState>(() => initialState(repository, userId));
   const matchesCurrentRequest = state.repository === repository && state.userId === userId;
 
@@ -45,10 +46,10 @@ export function useDashboardData(repository: OkrRepository, userId: string | und
     });
 
     return () => { active = false; };
-  }, [repository, userId]);
+  }, [repository, userId, calendar?.businessTimeZone, calendar?.weekStartsOn]);
 
   if (!matchesCurrentRequest) return { status: 'loading' };
-  if (state.status === 'ready') return { status: 'ready', data: state.data };
+  if (state.status === 'ready') return { status: 'ready', data: calendar ? { ...state.data, currentUser: { ...state.data.currentUser, businessTimeZone: calendar.businessTimeZone, weekStartsOn: calendar.weekStartsOn } } : state.data };
   if (state.status === 'error') return { status: 'error', errorCode: state.errorCode };
   return { status: 'loading' };
 }

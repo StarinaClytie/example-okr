@@ -63,3 +63,9 @@ Complete structured daily reports and evidence as requested by the page. Upload 
 - **KR progress did not save:** confirm that you own the KR, the percentage is 0–100, and date and note are present. The form retains its values after an error, so correct it and retry.
 - **A project is not visible:** this is normally an authorization boundary, not an application error. Restricted projects deliberately leave no project-list metadata. Ask a project administrator for membership or authorization; do not share screenshots or guess project names.
 - **Preparing a migration or deployment:** use the [Supabase and Aliyun deployment guide](supabase-setup.md). Database migrations and production deployment need explicit approval, backups, and local verification. Never put a service-role key, database password, or user token in frontend variables or logs.
+
+## Organization business calendar
+
+An administrator can set the organization's IANA timezone and Sunday/Monday week start under **Settings → System**. All members share this calendar for today's daily report, date-based edit/upload rules, and HR weekly ranges, regardless of their browser language or location. Daylight-saving changes follow the selected named timezone.
+
+New organizations start with UTC and Monday. Upgraded organizations retain their previous Shanghai/Monday behavior until an administrator changes it. Historical report dates are preserved. Calendar changes can change which unconfirmed report counts as today; confirmed reports remain locked. Refresh other open sessions after a change.

@@ -118,6 +118,18 @@ export class DemoOkrRepository implements OkrRepository {
     return this.buildDashboardData(userId);
   }
 
+  async updateOrganizationCalendar(input: { timeZone: string; weekStartsOn: 0 | 1 }): Promise<RepositoryResult<void>> {
+    const actor = mockData.users.find((user) => user.id === this.lastUserId);
+    if (actor?.role !== 'administrator') return { ok: false, error: { code: 'unauthorized', message: 'Administrator access required' } };
+    try { new Intl.DateTimeFormat('en', { timeZone: input.timeZone }).format(); }
+    catch { return { ok: false, error: { code: 'validation', message: 'Invalid time zone' } }; }
+    if (input.weekStartsOn !== 0 && input.weekStartsOn !== 1) return { ok: false, error: { code: 'validation', message: 'Invalid week start' } };
+    for (const user of mockData.users) {
+      if (user.organization === actor.organization) { user.businessTimeZone = input.timeZone; user.weekStartsOn = input.weekStartsOn; }
+    }
+    return { ok: true, data: undefined };
+  }
+
   async getCurrentProfile(): Promise<RepositoryResult<AuthProfileState>> {
     return { ok: true, data: { kind: 'error' } };
   }
