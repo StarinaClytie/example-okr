@@ -54,7 +54,7 @@ The application can be a starting point for a team-specific workflow. These are 
 | --- | --- | --- |
 | Team-specific reporting | Structured reports, KR ownership, and scoped review | Domain-specific fields, templates, and approval stages, with matching validation and access rules |
 | Existing workplace tools | In-app notifications and resource email delivery | Integrations with issue trackers, chat tools, or calendars |
-| Regional workflows | English/Chinese interfaces and dated progress records | More languages, configurable business timezones, and an application-controlled calendar |
+| Regional workflows | English/Chinese interfaces, organization business timezones, and Sunday/Monday week starts | More languages and an application-controlled date picker |
 | Organization-specific insights | Progress, planning, and work-hour views | Additional indicators and dashboards for the team's own review process |
 
 ## Screenshots
@@ -179,7 +179,7 @@ See the [Supabase and deployment guide](docs/supabase-setup.md) for database set
 
 ## Business dates and deployment boundaries
 
-Daily-report business dates use **Asia/Shanghai (UTC+8)** in database rules. Interface language switching does not change this timezone. Native date-input calendars and date placeholders follow the browser or operating-system locale, so they can appear in a different language from the application interface. See [MDN: date inputs](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/date). Teams operating in other timezones should review the date rules before persistent use.
+Administrators configure an **organization business timezone** and **Sunday or Monday week start** in Settings → System. Daily-report dates, edit/upload locks, progress-date checks, and HR weekly ranges use that organization calendar. New organizations default to **UTC / Monday**; upgrading preserves existing organizations as **Asia/Shanghai / Monday**. Stored historical report dates are never rewritten. Changing the calendar changes which unconfirmed report counts as today; confirmed reports stay locked. Other open sessions should refresh after a calendar change. Interface language and browser timezone do not change the organization calendar. Native date-input calendars and date placeholders follow the browser or operating-system locale, so they can appear in a different language from the application interface. See [MDN: date inputs](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/date). See the [calendar setup and upgrade notes](docs/supabase-setup.md#organization-calendar).
 
 The attachment API expects a same-origin reverse proxy. Cross-origin browser access is not enabled. The API applies per-process admission and verified-account rate limits. Production operators should also configure per-client request limits at the proxy and restrict access to the backend listener; see the [installation guide](docs/supabase-setup.md).
 

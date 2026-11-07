@@ -41,7 +41,9 @@ export interface AuthProviderProps extends PropsWithChildren {
 
 export function AuthProvider({ children, initialUserId = 'user-employee' }: AuthProviderProps) {
   const [currentUserId, setCurrentUserId] = useState(initialUserId);
-  const currentUser = selectableUsers.find((user) => user.id === currentUserId);
+  const [profileRevision, setProfileRevision] = useState(0);
+  const selectedUser = selectableUsers.find((user) => user.id === currentUserId);
+  const currentUser = useMemo(() => selectedUser ? { ...selectedUser } : undefined, [selectedUser, profileRevision]);
   const value = useMemo<AuthContextValue>(
     () => ({
       currentUser,
@@ -52,7 +54,7 @@ export function AuthProvider({ children, initialUserId = 'user-employee' }: Auth
       selectUser: setCurrentUserId,
       signOut: async () => undefined,
       signUp: async () => ({ error: null }),
-      refreshProfile: async () => undefined,
+      refreshProfile: async () => { setProfileRevision((revision) => revision + 1); },
     }),
     [currentUser],
   );

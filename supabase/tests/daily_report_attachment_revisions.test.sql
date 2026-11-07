@@ -57,7 +57,7 @@ select set_config('request.jwt.claim.sub', '81000000-0000-0000-0000-000000000001
 select lives_ok(
   $$insert into attachment_revision_sessions (purpose, report_id, session_id)
     select 'first', (started.value->>'reportId')::uuid, (started.value->>'sessionId')::uuid
-    from (select public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'confidential') as value) started$$,
+    from (select public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'confidential') as value) started$$,
   'author creates the report shell before uploading evidence'
 );
 select lives_ok(
@@ -81,7 +81,7 @@ from public.report_attachments where state = 'pending';
 
 select lives_ok(
   $$select * from public.save_daily_report(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'confidential',
+    (timezone('UTC', now()))::date, 'submitted', 'confidential',
     jsonb_build_array(jsonb_build_object(
       'dailyObjective', 'Revision one',
       'linkedKeyResultId', '85000000-0000-0000-0000-000000000001',
@@ -108,7 +108,7 @@ select lives_ok(
   'first submission creates revision-scoped associations for new uploads'
 );
 select is((select count(*) from public.report_attachment_revisions), 2::bigint, 'revision one retains both attachment associations');
-select is((select current_revision from public.daily_reports where report_date = (timezone('Asia/Shanghai', now()))::date), 1, 'the first reload resolves revision one as current');
+select is((select current_revision from public.daily_reports where report_date = (timezone('UTC', now()))::date), 1, 'the first reload resolves revision one as current');
 select is(
   (select count(*) from public.report_attachment_revisions rar join public.daily_report_revisions rr on rr.id = rar.revision_id join public.daily_reports dr on dr.id = rr.report_id where rr.revision_number = dr.current_revision),
   2::bigint,
@@ -128,7 +128,7 @@ select is(
 
 insert into attachment_revision_sessions (purpose, report_id, session_id)
 select 'second', (started.value->>'reportId')::uuid, (started.value->>'sessionId')::uuid
-from (select public.begin_daily_report_upload_session((timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal') as value) started;
+from (select public.begin_daily_report_upload_session((timezone('UTC', now()))::date, 'submitted', 'internal') as value) started;
 select public.adopt_daily_report_revision_attachments(
   (select report_id from attachment_revision_sessions where purpose = 'second'),
   (select session_id from attachment_revision_sessions where purpose = 'second'),
@@ -139,7 +139,7 @@ select public.adopt_daily_report_revision_attachments(
 );
 select lives_ok(
   $$select * from public.save_daily_report(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal',
+    (timezone('UTC', now()))::date, 'submitted', 'internal',
     jsonb_build_array(jsonb_build_object(
       'dailyObjective', 'Revision two',
       'linkedKeyResultId', '85000000-0000-0000-0000-000000000001',
@@ -180,8 +180,8 @@ select throws_ok(
   'a lower-clearance reader cannot download an internal attachment from a confidential historical revision omitted by the current internal revision'
 );
 set local role postgres;
-select is((select current_revision from public.daily_reports where report_date = (timezone('Asia/Shanghai', now()))::date), 2, 'editing today''s report advances its current revision in place');
-select is((select count(*) from public.daily_okr_blocks where report_id = (select id from public.daily_reports where report_date = (timezone('Asia/Shanghai', now()))::date)), 2::bigint, 'both immutable block revisions remain stored for the same report');
+select is((select current_revision from public.daily_reports where report_date = (timezone('UTC', now()))::date), 2, 'editing today''s report advances its current revision in place');
+select is((select count(*) from public.daily_okr_blocks where report_id = (select id from public.daily_reports where report_date = (timezone('UTC', now()))::date)), 2::bigint, 'both immutable block revisions remain stored for the same report');
 select is((select count(*) from public.report_attachment_revisions), 3::bigint, 'revision two adds only the retained association without duplicating revision one');
 select is(
   (select display_name from public.report_attachment_revisions rar join public.daily_report_revisions rr on rr.id = rar.revision_id where rr.revision_number = 2),

@@ -12,7 +12,7 @@ import { RepositoryDataState } from '../components/RepositoryDataState';
 export function WeeklyReportsPage({ dataRepository = repository }: { dataRepository?: OkrRepository }) {
   const { t } = useLocale();
   const { currentUser } = useAuth();
-  const dashboard = useDashboardData(dataRepository, currentUser?.id);
+  const dashboard = useDashboardData(dataRepository, currentUser?.id, currentUser);
   if (!currentUser) return null;
   if (dashboard.status !== 'ready') {
     return <section className="business-page" aria-labelledby="weekly-reports-page-title"><PageHeader title={t('weekly.title')} description={t('weekly.description')} /><RepositoryDataState state={dashboard} /></section>;

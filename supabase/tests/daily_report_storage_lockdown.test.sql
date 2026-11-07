@@ -29,7 +29,7 @@ insert into public.objectives (id, organization_id, project_id, owner_id, title,
 values ('a4000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'Daily Storage Lockdown Objective', 'internal', current_date - 1, current_date + 1);
 
 insert into public.daily_reports (id, organization_id, author_id, project_id, objective_id, report_date, status, classification)
-values ('a5000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000001', (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal');
+values ('a5000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000001', (timezone('UTC', now()))::date, 'submitted', 'internal');
 
 select has_function('public', 'authorize_attachment_object_upload', array['uuid'], 'daily OSS upload authorization exists');
 select has_function('public', 'confirm_attachment_object_upload', array['uuid', 'text', 'text', 'bigint'], 'daily OSS upload confirmation exists');
@@ -68,7 +68,7 @@ select
   (attachment.value->>'id')::uuid,
   attachment.value->>'path'
 from lateral public.begin_daily_report_upload_session(
-  (timezone('Asia/Shanghai', now()))::date, 'submitted', 'internal'
+  (timezone('UTC', now()))::date, 'submitted', 'internal'
 ) as session(value)
 cross join lateral public.begin_entry_attachment_upload(
   'a5000000-0000-0000-0000-000000000001',

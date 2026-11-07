@@ -1,8 +1,8 @@
 begin;
 
--- Report RPCs use the Shanghai business date. Keep CURRENT_DATE fixtures in
--- that same day, including runs after 16:00 UTC when the dates differ.
-set local timezone = 'Asia/Shanghai';
+-- Newly created organizations default to UTC. Keep CURRENT_DATE fixtures
+-- aligned with that organization calendar, independently of the test host.
+set local timezone = 'UTC';
 
 create extension if not exists pgtap with schema extensions;
 
@@ -183,14 +183,14 @@ select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000004
 select lives_ok(
   $$insert into rls_daily_sessions (purpose, session_id)
     select 'first', (public.begin_daily_report_upload_session(
-      (timezone('Asia/Shanghai', now()))::date, 'submitted', 'confidential'
+      (timezone('UTC', now()))::date, 'submitted', 'confidential'
     )->>'sessionId')::uuid$$,
   'author begins a session for the existing editable report'
 );
 select is((select current_revision from public.daily_reports where id = '50000000-0000-0000-0000-000000000001'), 1, 'opening an upload session does not create a report revision');
 select is(
   (select revision from public.save_daily_report(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'confidential',
+    (timezone('UTC', now()))::date, 'submitted', 'confidential',
     '[{"dailyObjective":"Updated through RPC","linkedKeyResultId":"41000000-0000-0000-0000-000000000001","workDescription":"Execute owned KR","hours":3,"result":"Updated result","evidenceLinks":[],"attachments":[]}]'::jsonb,
     (select session_id from rls_daily_sessions where purpose = 'first'),
     '[]'::jsonb
@@ -210,13 +210,13 @@ select throws_ok(
 select lives_ok(
   $$insert into rls_daily_sessions (purpose, session_id)
     select 'second', (public.begin_daily_report_upload_session(
-      (timezone('Asia/Shanghai', now()))::date, 'submitted', 'confidential'
+      (timezone('UTC', now()))::date, 'submitted', 'confidential'
     )->>'sessionId')::uuid$$,
   'author begins a fresh session after the first session completes'
 );
 select lives_ok(
   $$select * from public.save_daily_report(
-    (timezone('Asia/Shanghai', now()))::date, 'submitted', 'confidential',
+    (timezone('UTC', now()))::date, 'submitted', 'confidential',
     '[{"dailyObjective":"Second save","linkedKeyResultId":"41000000-0000-0000-0000-000000000001","workDescription":"Continue owned KR","hours":5,"result":"Second result","evidenceLinks":[],"attachments":[]}]'::jsonb,
     (select session_id from rls_daily_sessions where purpose = 'second'),
     '[]'::jsonb
@@ -224,12 +224,12 @@ select lives_ok(
   'second same-day submission updates instead of violating the unique key'
 );
 select is(
-  (select count(*) from public.daily_reports where author_id = '10000000-0000-0000-0000-000000000004' and report_date = (timezone('Asia/Shanghai', now()))::date),
+  (select count(*) from public.daily_reports where author_id = '10000000-0000-0000-0000-000000000004' and report_date = (timezone('UTC', now()))::date),
   1::bigint,
   'same-day submissions keep exactly one report row'
 );
 select is(
-  (select current_revision from public.daily_reports where author_id = '10000000-0000-0000-0000-000000000004' and report_date = (timezone('Asia/Shanghai', now()))::date),
+  (select current_revision from public.daily_reports where author_id = '10000000-0000-0000-0000-000000000004' and report_date = (timezone('UTC', now()))::date),
   3,
   'same-day submissions append immutable revisions'
 );

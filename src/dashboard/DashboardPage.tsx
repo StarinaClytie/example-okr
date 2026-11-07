@@ -10,7 +10,7 @@ import { useLocale } from '../i18n/LocaleProvider';
 export function DashboardPage({ dataRepository = repository }: { dataRepository?: OkrRepository }) {
   const { t } = useLocale();
   const { currentUser } = useAuth();
-  const dashboard = useDashboardData(dataRepository, currentUser?.id);
+  const dashboard = useDashboardData(dataRepository, currentUser?.id, currentUser);
 
   if (!currentUser) {
     return (

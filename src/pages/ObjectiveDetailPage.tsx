@@ -76,7 +76,7 @@ export function ObjectiveDetailPage({ dataRepository = repository }: { dataRepos
     void refresh();
   }, [currentUser, refresh]);
 
-  const evaluationDate = useMemo(() => currentBusinessDate(), []);
+  const evaluationDate = currentBusinessDate(new Date(), currentUser?.businessTimeZone);
   const objective = data?.objectives.find((candidate) => candidate.id === objectiveId);
   const readable = !objective || mode === 'supabase' || can(currentUser, 'okr.read_detail', objective).allowed;
   const objectiveKrs = useMemo(() => data?.keyResults.filter((keyResult) => keyResult.objectiveId === objectiveId) ?? [], [data, objectiveId]);

@@ -14,7 +14,7 @@ export function TeamPage({ dataRepository = repository }: { dataRepository?: Okr
   const { t } = useLocale();
   const navigate = useNavigate();
   const { currentUser, mode } = useAuth();
-  const dashboard = useDashboardData(dataRepository, currentUser?.id);
+  const dashboard = useDashboardData(dataRepository, currentUser?.id, currentUser);
   if (!currentUser) return null;
   if (dashboard.status !== 'ready') {
     return <section className="business-page" aria-labelledby="team-page-title"><PageHeader title={t('team.title')} description={t('team.description')} /><RepositoryDataState state={dashboard} /></section>;
