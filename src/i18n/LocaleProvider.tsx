@@ -4,6 +4,14 @@ import type { OkrRepository } from '../data/types';
 import { translate, type Locale, type MessageKey } from './messages';
 
 const STORAGE_KEY = 'example-okr.locale';
+// Isolate the new English public demo from the old Chinese-default preference.
+// Explicit choices made in the updated demo still persist across visits.
+function localeStorageKey(): string {
+  return import.meta.env.VITE_DEMO_STATIC_HOST === 'true' ? 'example-okr.public-demo.locale' : STORAGE_KEY;
+}
+function defaultLocale(): Locale {
+  return import.meta.env.VITE_DEMO_STATIC_HOST === 'true' ? 'en' : 'zh-CN';
+}
 
 function isLocale(value: unknown): value is Locale {
   return value === 'zh-CN' || value === 'en';
@@ -11,16 +19,16 @@ function isLocale(value: unknown): value is Locale {
 
 export function readStoredLocale(): Locale {
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    return isLocale(stored) ? stored : 'zh-CN';
+    const stored = window.localStorage.getItem(localeStorageKey());
+    return isLocale(stored) ? stored : defaultLocale();
   } catch {
-    return 'zh-CN';
+    return defaultLocale();
   }
 }
 
 export function storeLocale(locale: Locale): void {
   try {
-    window.localStorage.setItem(STORAGE_KEY, locale);
+    window.localStorage.setItem(localeStorageKey(), locale);
   } catch {
     // Storage can be unavailable in privacy-restricted browsers; in-memory switching still works.
   }

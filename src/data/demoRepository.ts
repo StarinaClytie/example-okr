@@ -1,3 +1,4 @@
+import { demoText } from '../mocks/englishDemo';
 import { configurePermissionSource } from '../auth/permissionService';
 import { mockData } from '../mocks/repository';
 import { getMockResourceDetail, mockResources } from '../mocks/resources';
@@ -50,7 +51,7 @@ import type {
 } from '../domain/types';
 
 function unsupported<T>(): RepositoryResult<T> {
-  return { ok: false, error: { code: 'validation', message: '当前环境不支持此持久化操作' } };
+  return { ok: false, error: { code: 'validation', message: demoText('当前环境不支持此持久化操作') } };
 }
 
 function riskStatus(probability: 1 | 2 | 3, impact: 1 | 2 | 3, resolved: boolean): ProgressStatus {
@@ -133,7 +134,7 @@ export class DemoOkrRepository implements OkrRepository {
   async getDailyReportDetail(reportId: string): Promise<RepositoryResult<DailyReportDetail>> {
     const report = mockData.dailyReports.find((candidate) => candidate.id === reportId);
     const author = report ? mockData.users.find((user) => user.id === report.authorId) : undefined;
-    if (!report || !author) return { ok: false, error: { code: 'not_found', message: '请求的资源不存在' } };
+    if (!report || !author) return { ok: false, error: { code: 'not_found', message: demoText('请求的资源不存在') } };
     return {
       ok: true,
       data: {
@@ -145,7 +146,7 @@ export class DemoOkrRepository implements OkrRepository {
 
   async commentDailyReport(reportId: string, body: string): Promise<RepositoryResult<DailyReportComment>> {
     const author = mockData.users.find((user) => user.id === this.lastUserId);
-    if (!mockData.dailyReports.some((report) => report.id === reportId) || !author) return { ok: false, error: { code: 'not_found', message: '请求的资源不存在' } };
+    if (!mockData.dailyReports.some((report) => report.id === reportId) || !author) return { ok: false, error: { code: 'not_found', message: demoText('请求的资源不存在') } };
     return { ok: true, data: { id: `demo-comment-${reportId}`, reportId, authorId: author.id, authorName: author.name, body, createdAt: '2026-08-24T09:00:00.000Z' } };
   }
 
@@ -154,7 +155,7 @@ export class DemoOkrRepository implements OkrRepository {
     return {
       ok: true,
       data: {
-        items: [{ id: 'demo-resource-owner-assigned', type: 'resource_owner_assigned', reportId: null, resourceId, actorName: '管理员', readAt: null, createdAt: '2026-08-24T10:00:00.000Z' }],
+        items: [{ id: 'demo-resource-owner-assigned', type: 'resource_owner_assigned', reportId: null, resourceId, actorName: demoText('管理员'), readAt: null, createdAt: '2026-08-24T10:00:00.000Z' }],
         nextCursor: null,
         unreadCount: 1,
       },
@@ -380,7 +381,7 @@ export class DemoOkrRepository implements OkrRepository {
     const detail = getMockResourceDetail(resourceId);
     return detail
       ? { ok: true, data: detail }
-      : { ok: false, error: { code: 'not_found', message: '请求的资源不存在' } };
+      : { ok: false, error: { code: 'not_found', message: demoText('请求的资源不存在') } };
   }
 
   async createResource(_input: CreateResourceInput): Promise<RepositoryResult<{ id: string }>> { return unsupported<{ id: string }>(); }

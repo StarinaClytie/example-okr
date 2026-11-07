@@ -1,3 +1,4 @@
+import { translateDemoFixture } from './englishDemo';
 import type { OrganizationRelation, ProjectMembership, User } from '../domain/types';
 
 export const users: User[] = [
@@ -125,3 +126,6 @@ export const projectMemberships: ProjectMembership[] = [
   { id: 'membership-auto-leader', projectId: 'project-automation', userId: 'user-zhang-san', membershipRole: 'leader' },
   { id: 'membership-auto-chen', projectId: 'project-automation', userId: 'user-chen-hao', membershipRole: 'member' },
 ];
+
+// English is a public-demo seed profile, never a translation of user input.
+translateDemoFixture({ users, organizationRelations, projectMemberships });
