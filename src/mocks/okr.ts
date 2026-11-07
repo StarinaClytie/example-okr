@@ -1,3 +1,4 @@
+import { translateDemoFixture } from './englishDemo';
 import type { CompanyObjective, KeyResult, Milestone, Objective, ObjectiveOwner, ProgressSnapshot, Project, ProjectTask, Risk } from '../domain/types';
 
 export const companyObjectives: CompanyObjective[] = [{ id: 'company-growth', level: 'company', title: '提升客户价值与可持续增长', progress: 60, status: 'on_track', classification: 'public' }];
@@ -371,3 +372,6 @@ export const progressSnapshots: ProgressSnapshot[] = [
   { id: 'snapshot-orion-11', projectId: 'project-orion', keyResultId: 'kr-orion-activation', weekOf: '2026-08-03', actual: 68, planned: 72 },
   { id: 'snapshot-orion-12', projectId: 'project-orion', keyResultId: 'kr-orion-activation', weekOf: '2026-08-10', actual: 72, planned: 76 },
 ];
+
+// English is a public-demo seed profile, never a translation of user input.
+translateDemoFixture({ companyObjectives, objectiveOwners, projects, projectTasks, objectives, keyResults, milestones, risks, progressSnapshots });
