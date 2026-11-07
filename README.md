@@ -40,19 +40,38 @@ Example Company / 示例公司 and all example domains, accounts and cloud resou
 
 For detailed product guidance, see the [English user guide](docs/user-guide.en.md) or the [Chinese user guide](docs/user-guide.zh-CN.md).
 
+## Use it in your organization
+
+You can fork this repository, modify it, and deploy your own copy for an internal team workspace under the [MIT license](LICENSE), retaining the copyright and license notice. Your deployment uses your own organization, accounts, data, and service configuration.
+
+For an internal website, host the frontend and attachment API in your environment and connect them to your own Supabase project. Follow the [installation guide](docs/supabase-setup.md) for migrations, Auth, email, and private file storage. Serving the frontend on an intranet does not make a hosted backend private or remove its network dependencies; a fully on-premises or offline deployment requires additional infrastructure work. The public demo is an evaluation preview and does not save team data.
+
+### Adaptation and extension ideas
+
+The application can be a starting point for a team-specific workflow. These are possible development directions, rather than features supplied by a plugin system or commitments on a release schedule:
+
+| Direction | Starting point | What an adaptation would add |
+| --- | --- | --- |
+| Team-specific reporting | Structured reports, KR ownership, and scoped review | Domain-specific fields, templates, and approval stages, with matching validation and access rules |
+| Existing workplace tools | In-app notifications and resource email delivery | Integrations with issue trackers, chat tools, or calendars |
+| Regional workflows | English/Chinese interfaces and dated progress records | More languages, configurable business timezones, and an application-controlled calendar |
+| Organization-specific insights | Progress, planning, and work-hour views | Additional indicators and dashboards for the team's own review process |
+
 ## Screenshots
+
+Captured from the English public demo using fictional sample data.
 
 ### Role-based dashboard
 
-![Employee dashboard with key results and progress trends](docs/images/dashboard.jpg)
+![Employee dashboard with key results and progress trends](docs/images/dashboard-en.jpg)
 
 ### OKR management
 
-![Objective and key result management workspace](docs/images/okr-management.jpg)
+![Objective and key result management workspace](docs/images/okr-management-en.jpg)
 
 ### Daily reports
 
-![Structured daily reporting workspace](docs/images/reports.jpg)
+![Daily reporting and scoped project-member review](docs/images/reports-en.jpg)
 
 ## Key Features
 
@@ -158,7 +177,7 @@ See the [Supabase and deployment guide](docs/supabase-setup.md) for database set
 
 ## Business dates and deployment boundaries
 
-Daily-report business dates use **Asia/Shanghai (UTC+8)** in database rules. Interface language switching does not change this timezone. Teams operating in other timezones should review the date rules before persistent use.
+Daily-report business dates use **Asia/Shanghai (UTC+8)** in database rules. Interface language switching does not change this timezone. Native date-input calendars and date placeholders follow the browser or operating-system locale, so they can appear in a different language from the application interface. See [MDN: date inputs](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/date). Teams operating in other timezones should review the date rules before persistent use.
 
 The attachment API expects a same-origin reverse proxy. Cross-origin browser access is not enabled. The API applies per-process admission and verified-account rate limits. Production operators should also configure per-client request limits at the proxy and restrict access to the backend listener; see the [installation guide](docs/supabase-setup.md).
 
