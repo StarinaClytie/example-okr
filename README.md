@@ -113,6 +113,8 @@ Switching to `supabase` mode is a separate setup path. It requires your own data
 
 Follow the [fresh-install guide](docs/supabase-setup.md) for your own hosted Supabase project, initial administrator, Auth email, attachment API and optional resource emails. Server and function examples are in `.env.server.example` and `.env.functions.example`. Live SMTP, Resend and OSS delivery require your own credentials and must be checked separately; see the [verification record](docs/deployment-verification.md) for tested local database/Auth flows and the remaining production checks.
 
+First-visit interface language follows your browser’s supported language preferences (English or Chinese), with English as the fallback. Saved local choices and signed-in profile preferences take precedence. The hosted public demo always starts in English on its first visit. Daily-report Word and PDF exports use the active interface language for system labels while preserving authored content.
+
 ## Application Modes
 
 Choose one mode in `.env.local`:

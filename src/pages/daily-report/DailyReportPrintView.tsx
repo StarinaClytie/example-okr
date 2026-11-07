@@ -1,16 +1,10 @@
 import { formatLinkedKeyResult } from '../../domain/dailyReportKeyResult';
 import type { DailyReportDetail } from '../../domain/types';
 
-const keyResultLabels = { unavailable: '关联 KR 已不可用', owner: '负责人' } as const;
+import type { Locale } from '../../i18n/messages';
+import { dailyReportExportText } from '../../services/dailyReportExportText';
 
-const statusLabels = {
-  draft: '草稿',
-  submitted: '已提交',
-  returned: '已退回',
-  confirmed: '已确认',
-} as const;
-
-function escapeHtml(value: string | number) {
+export function escapeHtml(value: string | number) {
   return String(value).replace(/[&<>'"]/g, (character) => ({
     '&': '&amp;',
     '<': '&lt;',
@@ -20,21 +14,18 @@ function escapeHtml(value: string | number) {
   })[character]!);
 }
 
-function attachmentMetadata(kind: string, classification: string, uploadState: string) {
-  return [kind === 'file' ? '文件' : '链接', classification, uploadState].join(' · ');
-}
-
-export function renderDailyReportPrintView(detail: DailyReportDetail) {
+export function renderDailyReportPrintView(detail: DailyReportDetail, locale: Locale = 'zh-CN') {
+  const { t, title, hours, keyResult, attachmentMetadata } = dailyReportExportText(locale);
   const entries = detail.blocks.map((block, index) => {
-    const keyResults = formatLinkedKeyResult(block, keyResultLabels);
+    const keyResults = formatLinkedKeyResult(block, keyResult);
     const attachments = block.evidenceItems?.length
-      ? `<ul>${block.evidenceItems.map((item) => `<li>${escapeHtml(item.label)}（${escapeHtml(attachmentMetadata(item.kind, item.classification, item.uploadState ?? 'unknown'))}）</li>`).join('')}</ul>`
+      ? `<ul>${block.evidenceItems.map((item) => `<li>${escapeHtml(item.label)} (${escapeHtml(attachmentMetadata(item.kind, item.classification, item.uploadState ?? 'unknown'))})</li>`).join('')}</ul>`
       : '';
-    return `<article class="daily-report-print__entry"><h3>事项 ${index + 1}</h3><p><strong>当日 O：</strong>${escapeHtml(block.dailyObjective)}</p><p><strong>关联季度 KR：</strong>${escapeHtml(keyResults)}</p>${block.workDescription ? `<p><strong>工作描述：</strong>${escapeHtml(block.workDescription)}</p>` : ''}<p><strong>结果 / 数据：</strong>${escapeHtml(block.result)}</p><p><strong>工时：</strong>${escapeHtml(block.hours)} 小时</p>${attachments}</article>`;
+    return `<article class="daily-report-print__entry"><h3>${t('daily.entryNumber', { number: index + 1 })}</h3><p><strong>${t('daily.objective')}: </strong>${escapeHtml(block.dailyObjective)}</p><p><strong>${t('daily.linkedQuarterlyKr')}: </strong>${escapeHtml(keyResults)}</p>${block.workDescription ? `<p><strong>${t('daily.workDescription')}: </strong>${escapeHtml(block.workDescription)}</p>` : ''}<p><strong>${t('daily.result')}: </strong>${escapeHtml(block.result)}</p><p><strong>${t('daily.hours')}: </strong>${escapeHtml(hours(block.hours))}</p>${attachments}</article>`;
   }).join('');
   const comments = detail.comments.length
     ? `<ol>${detail.comments.map((comment) => `<li><strong>${escapeHtml(comment.authorName)}</strong> · ${escapeHtml(comment.createdAt)}<br>${escapeHtml(comment.body)}</li>`).join('')}</ol>`
-    : '<p>暂无评论</p>';
+    : `<p>${t('daily.noComments')}</p>`;
 
-  return `<main class="daily-report-print"><header><h1>日报</h1><p>请在系统打印窗口中选择“另存为 PDF”。</p></header><dl class="daily-report-print__meta"><div><dt>姓名</dt><dd>${escapeHtml(detail.authorName)}</dd></div><div><dt>日期</dt><dd>${escapeHtml(detail.date)}</dd></div><div><dt>状态</dt><dd>${escapeHtml(statusLabels[detail.status])}</dd></div><div><dt>工时</dt><dd>${escapeHtml(detail.hours)} 小时</dd></div></dl><section><h2>日报事项</h2>${entries}</section><section><h2>评论</h2>${comments}</section></main>`;
+  return `<main class="daily-report-print"><header><h1>${title}</h1><p>${t('daily.printHint')}</p></header><dl class="daily-report-print__meta"><div><dt>${t('daily.author')}</dt><dd>${escapeHtml(detail.authorName)}</dd></div><div><dt>${t('daily.date')}</dt><dd>${escapeHtml(detail.date)}</dd></div><div><dt>${t('table.status')}</dt><dd>${escapeHtml(t(`status.${detail.status}`))}</dd></div><div><dt>${t('daily.hours')}</dt><dd>${escapeHtml(hours(detail.hours))}</dd></div></dl><section><h2>${t('daily.detailEntries')}</h2>${entries}</section><section><h2>${t('daily.comments')}</h2>${comments}</section></main>`;
 }

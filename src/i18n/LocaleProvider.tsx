@@ -10,7 +10,13 @@ function localeStorageKey(): string {
   return import.meta.env.VITE_DEMO_STATIC_HOST === 'true' ? 'example-okr.public-demo.locale' : STORAGE_KEY;
 }
 function defaultLocale(): Locale {
-  return import.meta.env.VITE_DEMO_STATIC_HOST === 'true' ? 'en' : 'zh-CN';
+  if (import.meta.env.VITE_DEMO_STATIC_HOST === 'true') return 'en';
+  const languages = navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const language of languages) {
+    if (/^zh(?:-|$)/i.test(language)) return 'zh-CN';
+    if (/^en(?:-|$)/i.test(language)) return 'en';
+  }
+  return 'en';
 }
 
 function isLocale(value: unknown): value is Locale {

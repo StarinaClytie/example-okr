@@ -36,7 +36,7 @@ export function DailyReportDetailDialog({
   onConfirmed,
   onNotificationMutation,
 }: DailyReportDetailDialogProps) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -134,7 +134,7 @@ export function DailyReportDetailDialog({
     setExportingWord(true);
     setActionError(undefined);
     try {
-      await exportDailyReportWord(currentDetail);
+      await exportDailyReportWord(currentDetail, locale);
     } catch {
       setActionError('daily.exportFailed');
     } finally {
@@ -147,7 +147,7 @@ export function DailyReportDetailDialog({
     setExportingPdf(true);
     setActionError(undefined);
     try {
-      printDailyReportPdf(currentDetail);
+      printDailyReportPdf(currentDetail, locale);
     } catch (error) {
       setActionError(error instanceof DailyReportExportError || (typeof error === 'object' && error !== null && 'code' in error && error.code === 'popup_blocked')
         ? 'daily.exportPopupBlocked'
