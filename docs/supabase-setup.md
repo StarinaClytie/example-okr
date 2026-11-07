@@ -117,6 +117,12 @@ location / {
 
 The frontend calls same-origin API paths. The Vite development configuration has no attachment proxy: test attachments through this proxy setup, or add your own development proxy. A running frontend alone does not provide upload/download support. `/api/health` on the server checks process availability, not OSS credentials or authorization correctness.
 
+### Attachment API response handling
+
+Application responses use generic JSON errors, including invalid JSON, malformed route parameters and unknown endpoints. Invalid JSON returns `400`, bodies over the 16 KiB JSON limit return `413`, and unsupported request encodings return `415`. Internal database messages, parser details and development stack traces are not returned by the application. Monitor status codes rather than relying on upstream error text.
+
+API responses carry `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`, including responses containing temporary signed URLs. Do not override these with proxy caching. These headers govern the API response, not a downloaded file someone has already saved or a separate OSS object response. Gateway-generated errors are controlled by the gateway's own configuration.
+
 ### Attachment API request limits
 
 The server enforces two request budgets shared by `/api/attachments/` and `/api/resource-attachments/`:
