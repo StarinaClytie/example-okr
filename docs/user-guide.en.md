@@ -1,6 +1,6 @@
 # OKR Management Platform User Guide (English)
 
-OKR Management Platform manages company Objectives, Key Results (KRs), daily reports, actual progress, and recorded work hours. The hosted public demo opens in English on the first visit and uses fictional English sample data. Other installations default to Chinese. Use the control in the top bar to switch instantly between 中文 and English without changing the URL. Interface text is translated; business content entered by users—such as Objectives, KRs, and daily reports—stays in its original language.
+OKR Management Platform manages company Objectives, Key Results (KRs), daily reports, actual progress, and recorded work hours. The hosted public demo opens in English on the first visit and uses fictional English sample data. Other installations use the browser’s preferred supported language (English or Chinese), with English as the fallback. Use the control in the top bar to switch instantly between 中文 and English without changing the URL. Interface text is translated; business content entered by users—such as Objectives, KRs, and daily reports—stays in its original language.
 
 ## 1. Sign-in and visible scope
 
@@ -47,7 +47,7 @@ Every approved, active account with an active role in the organization can find 
 
 ## 7. Switch between 中文 and English
 
-Use **中文 / English** in the top bar to switch instantly; the page and URL stay in place. The hosted public demo defaults to English on the first visit; other installations default to Chinese. Before sign-in the choice is stored locally. After your profile loads, its saved preference takes precedence and is safely written back. If preference persistence temporarily fails, the interface still switches immediately and you can select the language again later.
+Use **中文 / English** in the top bar to switch instantly; the page and URL stay in place. The hosted public demo defaults to English on the first visit; other installations use browser language preferences, falling back to English. Before sign-in the choice is stored locally. After your profile loads, its saved preference takes precedence and is safely written back. If preference persistence temporarily fails, the interface still switches immediately and you can select the language again later.
 
 ## 8. Daily reports, review, notifications, and export
 
