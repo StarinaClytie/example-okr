@@ -3,7 +3,7 @@ import type { Classification, DailyOkrBlock, DailyReport, DailyReportComment, Da
 import type { DailyEvidenceDraft } from '../domain/dailyEntry';
 import type { ApprovePendingUserInput, AttachmentUploadTarget, AuthProfileState, ClassifiedAttachmentInput, CreateResourceInput, DailyReportAttachmentUploadInput, DailyReportInput, DailyReportUploadSession, HrWorkHourRow, HrWorkHoursQuery, KeyResultCreateInput, KeyResultUpdateInput, KrProgressInput, KrProgressUpdateInput, ObjectiveCreateInput, ObjectiveUpdateInput, OkrRepository, OrganizationUser, OwnedRiskInput, ProjectCreateInput, ProjectDetail, ProjectSummary, ProjectUpdateInput, ReportResourceProblemInput, ReportResourceProblemResult, RepositoryErrorCode, RepositoryResult, ResolveResourceProblemInput, Resource, ResourceAttachmentUploadUpdate, ResourceDetail, ResourceUploadTarget, RetryResourceProblemNotificationResult, SupabaseClientLike, UpdateUserInput, UpdateResourceInput } from './types';
 import { sanitizeFilename, validateAttachment } from '../services/attachmentService';
-import { createOssAttachmentTransport, type OssAttachmentTransport } from '../services/ossAttachmentTransport';
+import { createAttachmentTransport, type AttachmentTransport } from '../services/attachmentTransport';
 import { configurePermissionSource } from '../auth/permissionService';
 import { buildPermissionSource } from './permissionSource';
 
@@ -252,15 +252,15 @@ function riskStatus(probability: number, impact: number, resolved: boolean): 'on
 
 export class SupabaseOkrRepository implements OkrRepository {
   readonly mode = 'supabase' as const;
-  private readonly dailyAttachmentTransport: OssAttachmentTransport;
-  private readonly resourceAttachmentTransport: OssAttachmentTransport;
-  constructor(readonly client: SupabaseClientLike, transport?: OssAttachmentTransport, resourceTransport?: OssAttachmentTransport) {
+  private readonly dailyAttachmentTransport: AttachmentTransport;
+  private readonly resourceAttachmentTransport: AttachmentTransport;
+  constructor(readonly client: SupabaseClientLike, transport?: AttachmentTransport, resourceTransport?: AttachmentTransport) {
     const getAccessToken = async () => {
       const session = await this.client.auth.getSession();
       return session.error ? null : session.data.session?.access_token ?? null;
     };
-    this.dailyAttachmentTransport = transport ?? createOssAttachmentTransport({ getAccessToken });
-    this.resourceAttachmentTransport = resourceTransport ?? createOssAttachmentTransport({
+    this.dailyAttachmentTransport = transport ?? createAttachmentTransport({ getAccessToken });
+    this.resourceAttachmentTransport = resourceTransport ?? createAttachmentTransport({
       getAccessToken,
       attachmentApiBasePath: '/api/resource-attachments',
     });

@@ -12,10 +12,10 @@ Use the Node version in `.nvmrc`, run `npm ci`, and use the repository-pinned CL
 | --- | --- | --- |
 | Browser application | `VITE_APP_MODE=supabase`, project URL, publishable/anon key | `.env.production.local` or protected build environment |
 | Auth emails | SMTP provider, verified sender, Auth URL settings | Supabase Dashboard |
-| Attachment API | Supabase URL/anon/service-role keys and OSS credentials | `.env.server.local` or protected server environment |
+| Attachment API | Supabase URL/anon/service-role keys and selected object-storage credentials | `.env.server.local` or protected server environment |
 | Resource notification emails | Resend key, sender, application URL | Edge Function secrets |
 
-Never give a service-role key, database password, SMTP password or OSS secret a `VITE_` prefix. Browser build variables are public. Copy example files to the `.local` filenames below; never put actual secrets into committed examples.
+Never give a service-role key, database password, SMTP password or object-storage secret a `VITE_` prefix. Browser build variables are public. Copy example files to the `.local` filenames below; never put actual secrets into committed examples.
 
 ## 2. Validate the database locally
 
@@ -83,15 +83,11 @@ The bootstrap script is a one-time operator procedure, not a browser API or migr
 
 ## 7. Configure private attachments
 
-The current attachment binary path uses **Alibaba Cloud OSS**, with authorization and metadata in Supabase. Historical Supabase Storage migrations do not replace this attachment API.
+Attachment binaries use one private **Alibaba Cloud OSS, AWS S3, or Cloudflare R2** bucket per deployment; Supabase retains authorization and metadata. Historical Supabase Storage migrations do not replace this attachment API. Choose the provider and bucket before the first upload. Changing environment variables does not move existing files and can break reads.
 
-Create a private **never-versioned** OSS bucket and restricted credentials. Enabled **or suspended** versioning is unsupported: OSS ignores overwrite prevention in both states. The attachment API checks `GetBucketVersioning` before signing uploads, verifying objects, and signing downloads, and fails closed if the check fails or versioning is detected. Grant the server `oss:GetBucketVersioning` on this bucket as well as its object permissions. Keep versioning disabled permanently, including while signed URLs remain valid. Use a fresh bucket if versioning has ever been enabled.
+Follow the [object-storage guide](object-storage.md) for the exact environment contract, private bucket setup, least permissions, overwrite protection, versioning checks and browser CORS. `ATTACHMENT_STORAGE_PROVIDER` defaults to `oss` so existing OSS environment variables continue to work. Explicit `s3` and `r2` use the `S3_*` variables; R2 requires its official account S3 endpoint and region `auto`. The [detailed OSS guide](alibaba-oss-daily-attachments.md) is specific to OSS.
 
-The signed upload requires `x-oss-forbid-overwrite: true`; the browser sends the header, and CORS must allow it together with `Content-Type`. Removing or changing the header invalidates the signature. Existing objects cannot be replaced through a still-valid upload URL issued by this version. When upgrading, pause upload signing and wait at least 300 seconds for older overwrite-capable URLs to expire before resuming uploads. A retry that receives OSS HTTP 409 advances only to server metadata verification and database finalization; the original object's ETag is retained. Replacement files need a new attachment ID and object key. Do not configure lifecycle rules or other writers to delete or replace live evidence: overwrite prevention depends on the original key continuing to exist.
-
-Deletion marks metadata deleted before removing bytes. A replayed upload URL may recreate an object during its remaining 300-second validity, but the deleted attachment cannot be finalized or downloaded and its key is never reused. Clean these unreachable orphan objects only after all upload URLs have expired, using database deletion state; do not use broad age-based expiry on live attachment paths.
-
-Create a private OSS bucket and restricted credentials. Configure bucket CORS for the exact application origin, direct signed `PUT` uploads, required content headers, and downloads as appropriate. Never make the bucket public to resolve a browser CORS error. Confirm bucket region and endpoint against your Alibaba Cloud configuration.
+Deletion marks metadata deleted before removing bytes. A replayed upload URL may recreate an object during its remaining 300-second validity, but the deleted attachment cannot be finalized or downloaded and its key is never reused. Clean unreachable orphan objects only after upload URLs expire, using database deletion state. Do not apply broad age-based expiry to live attachment paths.
 
 ```bash
 cp .env.server.example .env.server.local
@@ -115,13 +111,13 @@ location / {
 }
 ```
 
-The frontend calls same-origin API paths. The Vite development configuration has no attachment proxy: test attachments through this proxy setup, or add your own development proxy. A running frontend alone does not provide upload/download support. `/api/health` on the server checks process availability, not OSS credentials or authorization correctness.
+The frontend calls same-origin API paths. The Vite development configuration has no attachment proxy: test attachments through this proxy setup, or add your own development proxy. A running frontend alone does not provide upload/download support. `/api/health` on the server checks process availability, not storage credentials or authorization correctness.
 
 ### Attachment API response handling
 
 Application responses use generic JSON errors, including invalid JSON, malformed route parameters and unknown endpoints. Invalid JSON returns `400`, bodies over the 16 KiB JSON limit return `413`, and unsupported request encodings return `415`. Internal database messages, parser details and development stack traces are not returned by the application. Monitor status codes rather than relying on upstream error text.
 
-API responses carry `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`, including responses containing temporary signed URLs. Do not override these with proxy caching. These headers govern the API response, not a downloaded file someone has already saved or a separate OSS object response. Gateway-generated errors are controlled by the gateway's own configuration.
+API responses carry `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`, including responses containing temporary signed URLs. Do not override these with proxy caching. These headers govern the API response, not a downloaded file someone has already saved or a separate object-storage response. Gateway-generated errors are controlled by the gateway's own configuration.
 
 ### Attachment API request limits
 
@@ -131,7 +127,7 @@ The server enforces two request budgets shared by `/api/attachments/` and `/api/
 | --- | --- | --- |
 | `ATTACHMENT_RATE_LIMIT_WINDOW_MS` | `60000` | Window length in milliseconds |
 | `ATTACHMENT_RATE_LIMIT_GLOBAL_REQUESTS` | `6000` | All attachment requests per server process, before token verification |
-| `ATTACHMENT_RATE_LIMIT_USER_REQUESTS` | `120` | Requests per verified account per server process, before authorization/OSS calls |
+| `ATTACHMENT_RATE_LIMIT_USER_REQUESTS` | `120` | Requests per verified account per server process, before authorization/storage calls |
 
 Every attachment request consumes the admission budget, including invalid tokens and over-quota accounts. Account quotas use the identity returned by Supabase Auth, so token rotation or forged forwarding headers do not create a new budget. Different accounts retain independent account quotas behind the same proxy. A global admission limit can still reject all clients when exhausted; it is a backstop against upstream request volume, not a per-client fairness mechanism.
 
@@ -173,17 +169,17 @@ Use two or more independent test identities and record which checks actually pas
 
 - Register, confirm email, observe pending approval, approve and assign a role; test logout/login and password recovery.
 - Create an objective/KR, update progress, reload and confirm persistence. Check employee, project leader, HR and administrator permissions; unauthorized direct links and API calls must be denied.
-- Upload, finalize, download, replace and remove both daily-report and resource attachments. Test an unauthorized account, invalid file types and the current 100 MiB OSS attachment limit (the older Supabase Storage bucket has a separate 10 MiB setting). Confirm objects stay private and signed URLs expire.
+- Upload, finalize, download, replace and remove both daily-report and resource attachments. Test an unauthorized account, invalid file types and the current 100 MiB attachment limit (the older Supabase Storage bucket has a separate 10 MiB setting). Confirm objects stay private and signed URLs expire.
 - Report a resource problem and verify delivery to the correct owner with a link to **your** site. Test Auth mail separately from business notification mail.
 - Test deep-link refresh, both languages and mobile layout. Confirm no private credentials appear in built frontend assets, screenshots or logs.
 
-Local tests, builds and isolated database checks do not certify a hosted deployment. **Live SMTP, Resend and OSS delivery need your own test credentials and remain unverified until you run these checks.** Consult the current [CLI reference](https://supabase.com/docs/reference/cli/introduction) for command details.
+Local tests, builds and isolated database checks do not certify a hosted deployment. **Live SMTP, Resend and object-storage delivery need your own test credentials and remain unverified until you run these checks.** Consult the current [CLI reference](https://supabase.com/docs/reference/cli/introduction) for command details.
 
 For operation, monitor database/storage/egress against your actual plan, back up before upgrades and rehearse restoration. Preserve the previous frontend release. On a failed release, stop affected writes and restore the frontend or apply a reviewed forward migration; do not delete tables or rewrite migration history as a rollback.
 
 ## 10. Recorded verification
 
-See [the verification record](deployment-verification.md) for the actual local results and remaining hosted/SMTP/OSS checks. A successful local installation is not a claim that your hosted deployment has been validated.
+See [the verification record](deployment-verification.md) for the actual local results and remaining hosted/SMTP/object-storage checks. A successful local installation is not a claim that your hosted deployment has been validated.
 
 ## Organization calendar
 

@@ -12,8 +12,8 @@ function dependencies(): AttachmentApiDependencies {
     } })),
     confirmUpload: vi.fn(async () => ({ ok: true })),
     confirmDeletion: vi.fn(async () => ({ ok: true })),
-    oss: {
-      signPut: vi.fn(async () => 'https://oss.example/upload'),
+    store: {
+      signPut: vi.fn(async () => ({ url: 'https://oss.example/upload', headers: { 'x-oss-forbid-overwrite': 'true' } })),
       head: vi.fn(async () => ({ byteSize: 4, mimeType: 'application/pdf', etag: 'etag' })),
       signGet: vi.fn(async () => 'https://oss.example/download'),
       delete: vi.fn(async () => undefined),
@@ -42,7 +42,7 @@ describe('attachment API', () => {
     const response = await request(createApp(deps)).post('/api/attachments/attachment-1/upload-url')
       .set('Authorization', 'Bearer valid').send({ path: 'attacker/path' });
     expect(response.body).toEqual({ url: 'https://oss.example/upload', method: 'PUT', contentType: 'application/pdf', headers: { 'x-oss-forbid-overwrite': 'true' }, expiresIn: 300 });
-    expect(deps.oss.signPut).toHaveBeenCalledWith('organization/o/reports/r/attachment-1/file.pdf', 'application/pdf', 300);
+    expect(deps.store.signPut).toHaveBeenCalledWith('organization/o/reports/r/attachment-1/file.pdf', 'application/pdf', 300);
   });
   it('verifies HEAD metadata before confirming upload', async () => {
     const deps = dependencies();
@@ -51,7 +51,7 @@ describe('attachment API', () => {
   });
   it('rejects byte-size mismatches without confirming', async () => {
     const deps = dependencies();
-    deps.oss.head = vi.fn(async () => ({ byteSize: 3, mimeType: 'application/pdf', etag: 'etag' }));
+    deps.store.head = vi.fn(async () => ({ byteSize: 3, mimeType: 'application/pdf', etag: 'etag' }));
     expect((await request(createApp(deps)).post('/api/attachments/attachment-1/finalize').set('Authorization', 'Bearer valid')).status).toBe(422);
     expect(deps.confirmUpload).not.toHaveBeenCalled();
   });
@@ -63,7 +63,7 @@ describe('attachment API', () => {
   });
   it('does not confirm deletion when OSS fails', async () => {
     const deps = dependencies();
-    deps.oss.delete = vi.fn(async () => { throw new Error('OSS unavailable'); });
+    deps.store.delete = vi.fn(async () => { throw new Error('Storage unavailable'); });
     expect((await request(createApp(deps)).delete('/api/attachments/attachment-1').set('Authorization', 'Bearer valid')).status).toBe(502);
     expect(deps.confirmDeletion).not.toHaveBeenCalled();
   });
@@ -82,16 +82,16 @@ describe('resource attachment API', () => {
       .set('Authorization', 'Bearer valid').send({ path: 'attacker/path' });
 
     expect(response.body).toEqual({ url: 'https://oss.example/upload', method: 'PUT', contentType: 'application/pdf', headers: { 'x-oss-forbid-overwrite': 'true' }, expiresIn: 300 });
-    expect(deps.oss.signPut).toHaveBeenCalledWith('organization/o/resources/resource-1/resource-attachment-1/manual.pdf', 'application/pdf', 300);
+    expect(deps.store.signPut).toHaveBeenCalledWith('organization/o/resources/resource-1/resource-attachment-1/manual.pdf', 'application/pdf', 300);
     expect(deps.authorize).toHaveBeenCalledWith('valid', 'upload', 'resource-attachment-1', 'resource');
   });
 
   it.each([
     [{ byteSize: 3, mimeType: 'application/pdf', etag: 'etag' }, 'byte size'],
     [{ byteSize: 4, mimeType: 'text/plain', etag: 'etag' }, 'MIME type'],
-  ])('rejects a resource upload when the OSS HEAD %s mismatches', async (object) => {
+  ])('rejects a resource upload when the storage HEAD %s mismatches', async (object) => {
     const deps = resourceDependencies();
-    deps.oss.head = vi.fn(async () => object);
+    deps.store.head = vi.fn(async () => object);
 
     expect((await request(createApp(deps)).post('/api/resource-attachments/resource-attachment-1/finalize')
       .set('Authorization', 'Bearer valid')).status).toBe(422);
@@ -112,7 +112,7 @@ describe('resource attachment API', () => {
       .set('Authorization', 'Bearer valid');
 
     expect(response.body).toEqual({ url: 'https://oss.example/download', expiresIn: 60 });
-    expect(deps.oss.signGet).toHaveBeenCalledWith('organization/o/resources/resource-1/resource-attachment-1/manual.pdf', 60, 'manual.pdf');
+    expect(deps.store.signGet).toHaveBeenCalledWith('organization/o/resources/resource-1/resource-attachment-1/manual.pdf', 60, 'manual.pdf');
     expect(deps.authorize).toHaveBeenCalledWith('valid', 'download', 'resource-attachment-1', 'resource');
   });
 
@@ -125,10 +125,30 @@ describe('resource attachment API', () => {
 
   it('does not confirm resource deletion when OSS deletion fails', async () => {
     const deps = resourceDependencies();
-    deps.oss.delete = vi.fn(async () => { throw new Error('OSS unavailable'); });
+    deps.store.delete = vi.fn(async () => { throw new Error('Storage unavailable'); });
 
     expect((await request(createApp(deps)).delete('/api/resource-attachments/resource-attachment-1')
       .set('Authorization', 'Bearer valid')).status).toBe(502);
     expect(deps.confirmDeletion).not.toHaveBeenCalled();
   });
+});
+
+it('forwards storage-specific signed headers for both attachment families', async () => {
+  for (const family of ['attachments', 'resource-attachments']) {
+    const deps = dependencies();
+    const objectStore = { ...deps.store, signPut: vi.fn(async () => ({ url: 'https://storage.example/upload', headers: { 'If-None-Match': '*' } })) };
+    const app = createApp({ ...deps, store: objectStore } as unknown as AttachmentApiDependencies);
+    const response = await request(app).post(`/api/${family}/attachment-1/upload-url`).set('Authorization', 'Bearer valid');
+    expect(response.status).toBe(200);
+    expect(response.body.headers).toEqual({ 'If-None-Match': '*' });
+    expect(response.body.url).toBe('https://storage.example/upload');
+  }
+});
+
+it.each(['attachments', 'resource-attachments'])('rejects incomplete verification metadata for %s', async (family) => {
+  for (const metadata of [{byteSize:4,mimeType:'',etag:'etag'}, {byteSize:4,mimeType:'application/pdf',etag:''}, {byteSize:NaN,mimeType:'application/pdf',etag:'etag'}]) {
+    const deps = dependencies(); deps.store.head = vi.fn(async()=> metadata);
+    const response = await request(createApp(deps)).post(`/api/${family}/attachment-1/finalize`).set('Authorization','Bearer valid');
+    expect(response.status).toBe(422); expect(deps.confirmUpload).not.toHaveBeenCalled();
+  }
 });

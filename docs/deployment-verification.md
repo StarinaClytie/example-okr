@@ -82,3 +82,13 @@ Validation: **694 tests in 79 files passed**, frontend/typecheck and attachment 
 - Frontend and attachment-server builds passed. Browser checks confirmed saving an organization timezone and Sunday start and reading the same setting after switching roles. Public demo changes remain in memory and reset on refresh.
 
 These checks validate the local migration and application paths. Operators of persistent installations must apply the new migration before deploying this frontend and validate their own deployment; external email and storage delivery were not exercised by this change.
+
+## Object-storage adapter verification — 8 November 2026
+
+- Application/server suite: 766 tests across 87 files passed. Frontend and attachment-server builds, typecheck and configuration checks passed; dependency audit found zero vulnerabilities.
+- Real AWS SDK presigning tests cover S3/R2 endpoints, regions, temporary tokens, expiry, mandatory signed Content-Type and If-None-Match headers, and download filenames. AWS and OSS versioning checks reject enabled/suspended buckets and failed checks; R2 bypasses the unsupported versioning operation only for validated official account endpoints.
+- A loopback HTTP fixture independently verifies actual SigV4 PUT/GET signatures and exercises both attachment API families through upload, HEAD verification, download and deletion using the real SDK transport. Missing/altered signed headers are rejected; repeat PUTs cannot overwrite the stored bytes. The fixture is a local test service, not AWS or R2, and does not validate cloud IAM, CORS, account configuration or provider network behavior.
+- Browser-transport regressions cover provider-supplied headers and 409/412 retries proceeding only to server verification, never directly to a completed upload. Incomplete metadata is rejected before confirmation. Authentication, rate limits and generic error-response tests continue to pass.
+- Independent security review found no blocking issues in the adapter/configuration changes. No database migration is required for this feature.
+
+**Still unverified:** actual AWS S3, Cloudflare R2 and OSS bucket acceptance for this version. Use your own isolated private bucket and credentials to follow the [storage acceptance steps](object-storage.md#acceptance-and-verification-limits). Existing files are not copied or routed across providers; changing the selected bucket/provider requires a separate migration plan.

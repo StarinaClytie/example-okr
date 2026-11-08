@@ -1,13 +1,13 @@
 import { attachmentRateLimiters, defaultAttachmentRateLimits, type AttachmentRateLimitConfig } from './rateLimit.js';
 import express, { type Request, type Response, type NextFunction } from 'express';
-import type { AttachmentKind, AttachmentOperation, AuthorizedAttachment, OssObjectStore, RpcResult } from './types.js';
+import type { AttachmentKind, AttachmentOperation, AuthorizedAttachment, ObjectStore, RpcResult } from './types.js';
 
 export interface AttachmentApiDependencies {
   authenticate(header: string | undefined): Promise<{ token: string; userId: string } | null>;
   authorize(token: string, operation: AttachmentOperation, attachmentId: string, kind: AttachmentKind): Promise<RpcResult<AuthorizedAttachment>>;
   confirmUpload(id: string, checksum: string, mimeType: string, byteSize: number, kind: AttachmentKind): Promise<RpcResult<void>>;
   confirmDeletion(id: string, kind: AttachmentKind): Promise<RpcResult<void>>;
-  oss: OssObjectStore;
+  store: ObjectStore;
 }
 
 function attachmentId(req: Request): string { return String(req.params.attachmentId || ''); }
@@ -55,41 +55,41 @@ export function createApp(deps: AttachmentApiDependencies, rateLimits: Attachmen
       try {
         const target = await context(req, res, 'upload', kind); if (!target) return;
         const expiresIn = 300;
-        const url = await deps.oss.signPut(target.path, target.mimeType, expiresIn);
-        res.json({ url, method: 'PUT', contentType: target.mimeType, headers: { 'x-oss-forbid-overwrite': 'true' }, expiresIn });
-      } catch { res.status(502).json({ error: 'OSS signing failed' }); }
+        const upload = await deps.store.signPut(target.path, target.mimeType, expiresIn);
+        res.json({ url: upload.url, method: 'PUT', contentType: target.mimeType, headers: upload.headers, expiresIn });
+      } catch { res.status(502).json({ error: 'Storage signing failed' }); }
     });
 
     app.post(`${basePath}/:attachmentId/finalize`, async (req, res) => {
       try {
         const target = await context(req, res, 'upload', kind); if (!target) return;
-        const object = await deps.oss.head(target.path);
-        if (object.byteSize !== target.byteSize || (object.mimeType && object.mimeType !== target.mimeType)) {
+        const object = await deps.store.head(target.path);
+        if (!Number.isSafeInteger(object.byteSize) || object.byteSize !== target.byteSize || object.mimeType !== target.mimeType || !object.etag.trim()) {
           res.status(422).json({ error: 'Uploaded object metadata mismatch' }); return;
         }
         const confirmed = await deps.confirmUpload(target.id, object.etag, target.mimeType, target.byteSize, kind);
         if (!confirmed.ok) { res.status(failureStatus(confirmed.status, 500)).json({ error: 'Finalization failed' }); return; }
         res.json({ id: target.id, state: 'uploaded' });
-      } catch { res.status(502).json({ error: 'OSS verification failed' }); }
+      } catch { res.status(502).json({ error: 'Storage verification failed' }); }
     });
 
     app.get(`${basePath}/:attachmentId/download-url`, async (req, res) => {
       try {
         const target = await context(req, res, 'download', kind); if (!target) return;
         const expiresIn = target.expiresIn || 60;
-        const url = await deps.oss.signGet(target.path, expiresIn, target.originalName ?? target.fileName);
+        const url = await deps.store.signGet(target.path, expiresIn, target.originalName ?? target.fileName);
         res.json({ url, expiresIn });
-      } catch { res.status(502).json({ error: 'OSS signing failed' }); }
+      } catch { res.status(502).json({ error: 'Storage signing failed' }); }
     });
 
     app.delete(`${basePath}/:attachmentId`, async (req, res) => {
       try {
         const target = await context(req, res, 'delete', kind); if (!target) return;
-        if (!target.alreadyDeleted) await deps.oss.delete(target.path);
+        if (!target.alreadyDeleted) await deps.store.delete(target.path);
         const confirmed = await deps.confirmDeletion(target.id, kind);
         if (!confirmed.ok) { res.status(failureStatus(confirmed.status, 500)).json({ error: 'Deletion confirmation failed' }); return; }
         res.status(204).end();
-      } catch { res.status(502).json({ error: 'OSS deletion failed' }); }
+      } catch { res.status(502).json({ error: 'Storage deletion failed' }); }
     });
   }
 

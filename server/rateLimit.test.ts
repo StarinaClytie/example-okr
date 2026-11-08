@@ -13,7 +13,7 @@ function dependencies(): AttachmentApiDependencies {
     authorize: vi.fn(async () => ({ ok: true, data: { id: 'file', path: 'files/file.pdf', mimeType: 'application/pdf', byteSize: 4 } })),
     confirmUpload: vi.fn(async () => ({ ok: true })),
     confirmDeletion: vi.fn(async () => ({ ok: true })),
-    oss: { signPut: vi.fn(async () => 'https://oss.example/upload'), signGet: vi.fn(async () => 'https://oss.example/download'), head: vi.fn(async () => ({ byteSize: 4, mimeType: 'application/pdf', etag: 'etag' })), delete: vi.fn(async () => {}) },
+    store: { signPut: vi.fn(async () => ({ url: 'https://oss.example/upload', headers: { 'x-oss-forbid-overwrite': 'true' } })), signGet: vi.fn(async () => 'https://oss.example/download'), head: vi.fn(async () => ({ byteSize: 4, mimeType: 'application/pdf', etag: 'etag' })), delete: vi.fn(async () => {}) },
   };
 }
 afterEach(() => vi.useRealTimers());
@@ -29,7 +29,7 @@ describe('attachment request budgets', () => {
     expect(blocked.status).toBe(429);
     expect(Number(blocked.headers['retry-after'])).toBeGreaterThan(0);
     expect(deps.authorize).toHaveBeenCalledTimes(2);
-    expect(deps.oss.delete).not.toHaveBeenCalled();
+    expect(deps.store.delete).not.toHaveBeenCalled();
     vi.setSystemTime(Date.now() + 60_001);
     expect((await request(app).get('/api/attachments/file/download-url').set('Authorization', 'Bearer a')).status).toBe(200);
   });
@@ -60,7 +60,7 @@ describe('attachment request budgets', () => {
     const app = createApp(deps, { windowMs: 60_000, globalLimit: 20, userLimit: 1 });
     const replies = await Promise.all(Array.from({ length: 3 }, () => request(app).get('/api/attachments/file/download-url').set('Authorization', 'Bearer a')));
     expect(replies.map(r => r.status).sort()).toEqual([200, 429, 429]);
-    expect(deps.oss.signGet).toHaveBeenCalledTimes(1);
+    expect(deps.store.signGet).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -71,5 +71,5 @@ it('fails closed when identity verification throws without exposing backend deta
   expect(response.status).toBe(503);
   expect(response.body).toEqual({ error: 'Authentication unavailable' });
   expect(deps.authorize).not.toHaveBeenCalled();
-  expect(deps.oss.signGet).not.toHaveBeenCalled();
+  expect(deps.store.signGet).not.toHaveBeenCalled();
 });
