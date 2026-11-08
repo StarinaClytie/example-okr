@@ -186,3 +186,10 @@ describe('application locale', () => {
     expect(screen.getAllByText(/Project Lead/).length).toBeGreaterThan(0);
   });
 });
+
+it('keeps the pre-login language for an account that has never saved a preference', () => {
+ window.localStorage.setItem('example-okr.locale','en');
+ renderAuthenticated({setMyLocale:vi.fn()} as unknown as OkrRepository,{...profile,preferredLocale:undefined});
+ expect(screen.getByText('en')).toBeVisible();
+ expect(document.documentElement.lang).toBe('en');
+});

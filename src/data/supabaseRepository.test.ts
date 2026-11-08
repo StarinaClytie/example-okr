@@ -1160,3 +1160,8 @@ it('maps disabled hours from organization and updates through the scoped RPC', a
   expect(await repository.updateOrganizationWorkHours(false)).toMatchObject({ ok: true });
   expect(rpc).toHaveBeenCalledWith('update_organization_work_hours', { p_enabled: false });
 });
+
+it.each([null, undefined])('keeps an unset account language unset (%s)', async (preferred_locale) => {
+ const {client}=createClient({rpcData:{state:'active'},profile:{id:'profile-1',display_name:'New member',clearance:'internal',approval_status:'approved',is_active:true,user_roles:[{role:'employee'}],preferred_locale}});
+ expect(await new SupabaseOkrRepository(client).getCurrentProfile()).toMatchObject({ok:true,data:{kind:'active',user:{preferredLocale:undefined}}});
+});
