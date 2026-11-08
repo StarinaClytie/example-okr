@@ -1,5 +1,5 @@
 // End-to-end local Auth + approval smoke test. Creates disposable fake users.
-// Run only after db reset and database tests, against project_id okr-repro-check.
+// Run only after db reset and database tests on an explicitly named disposable stack.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -7,19 +7,22 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
+import { disposableProjectId } from './disposable-project.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const workdir = process.argv[2];
 assert(workdir, 'Supply the disposable Supabase work directory');
-assert.match(readFileSync(resolve(workdir, 'supabase/config.toml'), 'utf8'), /^project_id\s*=\s*"okr-repro-check"\s*$/m);
+const projectId = disposableProjectId(readFileSync(resolve(workdir, 'supabase/config.toml'), 'utf8'));
+const container = `supabase_db_${projectId}`;
 const status = JSON.parse(execFileSync(process.execPath, [resolve(root, 'node_modules/supabase/dist/supabase.js'), 'status', '-o', 'json', '--workdir', workdir], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
 const api = new URL(status.API_URL);
 const mail = new URL(status.MAILPIT_URL ?? status.INBUCKET_URL);
 for (const url of [api, mail]) assert(['127.0.0.1', 'localhost'].includes(url.hostname) && url.protocol === 'http:', 'Local endpoints only');
 function sql(text) {
-  return execFileSync('docker', ['exec', '-i', 'supabase_db_okr-repro-check', 'psql', '-U', 'postgres', '-d', 'postgres', '-X', '-At', '-v', 'ON_ERROR_STOP=1'], { input: text, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+  return execFileSync('docker', ['exec', '-i', container, 'psql', '-U', 'postgres', '-d', 'postgres', '-X', '-At', '-v', 'ON_ERROR_STOP=1'], { input: text, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
 }
 assert.equal(sql('SELECT count(*) FROM public.organizations;').trim(), '0', 'Reset the disposable database before this test');
+assert.equal(sql('SELECT count(*) FROM auth.users;').trim(), '0', 'Requires fresh disposable Auth data before this test');
 const client = () => createClient(api.origin, status.ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
 async function ok(promise) {
   const result = await promise;

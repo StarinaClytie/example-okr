@@ -109,11 +109,22 @@ Use the role selector above the dashboard to explore the included sample identit
 
 ### Using Your Own Data
 
+You can start with only the components your team needs:
+
+| What you want to use | Services you must configure |
+| --- | --- |
+| Explore the demo | None; Node and npm are enough |
+| Save your team's OKRs, reports and user accounts | Your own Supabase database/Auth and frontend hosting; Auth email delivery for confirmation/recovery |
+| Upload/download real files | Add a private OSS/S3/R2 bucket, attachment API and same-origin proxy |
+| Email resource owners about reported problems | Optionally add the notification function and Resend configuration; this is separate from Auth email |
+
+Without file storage, use report text/results without uploading files; file buttons do not become working uploads until the attachment services are configured. Missing resource email configuration does not undo a saved resource problem.
+
 Switching to `supabase` mode is a separate setup path. It requires your own database with the repository migrations applied, Auth configuration and an initial organization/administrator. Email verification and password recovery require working Auth email delivery. Real attachments additionally require private object storage and the attachment API; resource notification emails use a separate server-side email provider configuration.
 
 Follow the [fresh-install guide](docs/supabase-setup.md) for your own hosted Supabase project, initial administrator, Auth email, attachment API and optional resource emails. Server and function examples are in `.env.server.example` and `.env.functions.example`. Live SMTP, Resend and object-storage delivery require your own credentials and must be checked separately; see the [verification record](docs/deployment-verification.md) for tested local database/Auth flows and the remaining production checks.
 
-First-visit interface language follows your browser’s supported language preferences (English or Chinese), with English as the fallback. Saved local choices and signed-in profile preferences take precedence. The hosted public demo always starts in English on its first visit. Daily-report Word and PDF exports use the active interface language for system labels while preserving authored content.
+First-visit interface language follows your browser’s supported language preferences (English or Chinese), with English as the fallback. Saved local choices and signed-in profile preferences take precedence. New accounts have no stored account language until one is chosen, so first sign-in keeps the browser/login-page language; existing account preferences are preserved during upgrades. The hosted public demo always starts in English on its first visit. Daily-report Word and PDF exports use the active interface language for system labels while preserving authored content.
 
 ## Application Modes
 
@@ -154,7 +165,7 @@ Database changes can additionally be checked in an isolated local Supabase envir
 ```bash
 npm exec supabase -- start
 npm exec supabase -- db reset --local
-npm exec supabase -- test db
+npm exec supabase -- test db --local
 npm exec supabase -- db lint --local
 ```
 
@@ -171,9 +182,13 @@ The build reads the standard Vite production environment files, with deployment-
 The attachment API requires server-only Supabase configuration (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) and credentials for one private storage provider. Set `ATTACHMENT_STORAGE_PROVIDER=oss|s3|r2`; omitted means `oss`, preserving existing OSS configuration. Follow the [object-storage guide](docs/object-storage.md) for provider settings, permissions and CORS. Choose the provider and bucket before the first upload: changing environment variables does not migrate existing files and can break reads. Build and run it with:
 
 ```bash
+cp .env.server.example .env.server.local
+# Fill the required values in .env.server.local first.
 npm run server:build
-npm run server:start
+ATTACHMENT_ENV_FILE=.env.server.local npm run server:start
 ```
+
+The explicit environment-file setting is required for this filename; the server otherwise reads `.env.production.local`. A successful health response only proves the API process is running, not that cloud file transfers work.
 
 See the [Supabase and deployment guide](docs/supabase-setup.md) for database setup, production checks, backups, and operational procedures.
 

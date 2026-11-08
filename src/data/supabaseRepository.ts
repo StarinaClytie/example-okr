@@ -69,7 +69,7 @@ function mapProfile(row: Record<string, unknown>): User | null {
     title: typeof row.job_title === 'string' ? row.job_title : '',
     department: typeof row.department === 'string' ? row.department : '',
     projectIds: Array.isArray(row.project_members) ? row.project_members.map((item) => String((item as Record<string, unknown>).project_id)) : [],
-    preferredLocale: row.preferred_locale === 'en' ? 'en' : 'zh-CN',
+    preferredLocale: row.preferred_locale === 'en' || row.preferred_locale === 'zh-CN' ? row.preferred_locale : undefined,
     workHoursEnabled: organization?.work_hours_enabled !== false,
     businessTimeZone: typeof organization?.business_time_zone === 'string' ? organization.business_time_zone : 'Asia/Shanghai',
     weekStartsOn: organization?.week_starts_on === 0 ? 0 : 1,
