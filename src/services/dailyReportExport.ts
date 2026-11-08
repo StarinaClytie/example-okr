@@ -20,12 +20,12 @@ function textCell(docx: DocxModule, value: string) {
   return new docx.TableCell({ children: [new docx.Paragraph(value)] });
 }
 
-function detailsTable(docx: DocxModule, detail: DailyReportDetail, locale: Locale) {
+function detailsTable(docx: DocxModule, detail: DailyReportDetail, locale: Locale, workHoursEnabled: boolean) {
   const { t, hours } = dailyReportExportText(locale);
   return new docx.Table({
     rows: [
       new docx.TableRow({ children: [textCell(docx, t('daily.author')), textCell(docx, detail.authorName), textCell(docx, t('daily.date')), textCell(docx, detail.date)] }),
-      new docx.TableRow({ children: [textCell(docx, t('table.status')), textCell(docx, t(`status.${detail.status}`)), textCell(docx, t('daily.hours')), textCell(docx, hours(detail.hours))] }),
+      new docx.TableRow({ children: [textCell(docx, t('table.status')), textCell(docx, t(`status.${detail.status}`)), ...(workHoursEnabled ? [textCell(docx, t('daily.hours')), textCell(docx, hours(detail.hours))] : [])] }),
     ],
   });
 }
@@ -34,11 +34,11 @@ function safeFilenamePart(value: string) {
   return value.replace(/[\\/:*?"<>|]/g, '').trim() || 'report';
 }
 
-function documentChildren(docx: DocxModule, detail: DailyReportDetail, locale: Locale) {
+function documentChildren(docx: DocxModule, detail: DailyReportDetail, locale: Locale, workHoursEnabled: boolean) {
   const { t, title, hours, keyResult, attachmentMetadata } = dailyReportExportText(locale);
   return [
     new docx.Paragraph({ text: title, heading: docx.HeadingLevel.HEADING_1 }),
-    detailsTable(docx, detail, locale),
+    detailsTable(docx, detail, locale, workHoursEnabled),
     new docx.Paragraph({ text: t('daily.detailEntries'), heading: docx.HeadingLevel.HEADING_2 }),
     ...detail.blocks.flatMap((block, index) => [
       new docx.Paragraph({ text: t('daily.entryNumber', { number: index + 1 }), heading: docx.HeadingLevel.HEADING_3 }),
@@ -46,7 +46,7 @@ function documentChildren(docx: DocxModule, detail: DailyReportDetail, locale: L
       new docx.Paragraph(`${t('daily.linkedQuarterlyKr')}: ${formatLinkedKeyResult(block, keyResult)}`),
       ...(block.workDescription ? [new docx.Paragraph(`${t('daily.workDescription')}: ${block.workDescription}`)] : []),
       new docx.Paragraph(`${t('daily.result')}: ${block.result}`),
-      new docx.Paragraph(`${t('daily.hours')}: ${hours(block.hours)}`),
+      ...(workHoursEnabled ? [new docx.Paragraph(`${t('daily.hours')}: ${hours(block.hours)}`)] : []),
       ...(block.evidenceItems?.map((item) => new docx.Paragraph(`${t('daily.attachment')}: ${item.label} (${attachmentMetadata(item.kind, item.classification, item.uploadState ?? 'unknown')})`)) ?? []),
     ]),
     new docx.Paragraph({ text: t('daily.comments'), heading: docx.HeadingLevel.HEADING_2 }),
@@ -56,9 +56,9 @@ function documentChildren(docx: DocxModule, detail: DailyReportDetail, locale: L
   ];
 }
 
-export async function exportDailyReportWord(detail: DailyReportDetail, locale: Locale = 'zh-CN'): Promise<void> {
+export async function exportDailyReportWord(detail: DailyReportDetail, locale: Locale = 'zh-CN', workHoursEnabled = true): Promise<void> {
   const docx = await import('docx');
-  const wordDocument = new docx.Document({ styles: { default: { document: { run: { language: { value: locale === 'en' ? 'en-US' : 'zh-CN' } } } } }, sections: [{ children: documentChildren(docx, detail, locale) }] });
+  const wordDocument = new docx.Document({ styles: { default: { document: { run: { language: { value: locale === 'en' ? 'en-US' : 'zh-CN' } } } } }, sections: [{ children: documentChildren(docx, detail, locale, workHoursEnabled) }] });
   const blob = await docx.Packer.toBlob(wordDocument);
   const objectUrl = URL.createObjectURL(blob);
   const anchor = documentCreateAnchor(objectUrl, `${dailyReportExportText(locale).title}-${safeFilenamePart(detail.authorName)}-${detail.date}.docx`);
@@ -98,13 +98,13 @@ export function openDailyReportPrintWindow(opener: Pick<Window, 'open'> = window
   return opener.open('', '_blank');
 }
 
-export function printDailyReportPdf(detail: DailyReportDetail, locale: Locale = 'zh-CN'): void {
+export function printDailyReportPdf(detail: DailyReportDetail, locale: Locale = 'zh-CN', workHoursEnabled = true): void {
   const popup = openDailyReportPrintWindow();
   if (!popup) throw new DailyReportExportError('popup_blocked');
 
   const title = `${dailyReportExportText(locale).title}-${safeFilenamePart(detail.authorName)}-${detail.date}`;
   popup.addEventListener('load', () => popup.print(), { once: true });
   popup.document.open();
-  popup.document.write(printDocument(title, renderDailyReportPrintView(detail, locale), locale));
+  popup.document.write(printDocument(title, renderDailyReportPrintView(detail, locale, workHoursEnabled), locale));
   popup.document.close();
 }

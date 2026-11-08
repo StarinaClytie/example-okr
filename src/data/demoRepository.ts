@@ -118,6 +118,16 @@ export class DemoOkrRepository implements OkrRepository {
     return this.buildDashboardData(userId);
   }
 
+  async updateOrganizationWorkHours(enabled: boolean): Promise<RepositoryResult<void>> {
+    const actor = mockData.users.find((user) => user.id === this.lastUserId);
+    if (actor?.role !== 'administrator') return { ok: false, error: { code: 'unauthorized', message: 'Administrator access required' } };
+    if (typeof enabled !== 'boolean') return unsupported();
+    for (const user of mockData.users) {
+      if (user.organization === actor.organization) user.workHoursEnabled = enabled;
+    }
+    return { ok: true, data: undefined };
+  }
+
   async updateOrganizationCalendar(input: { timeZone: string; weekStartsOn: 0 | 1 }): Promise<RepositoryResult<void>> {
     const actor = mockData.users.find((user) => user.id === this.lastUserId);
     if (actor?.role !== 'administrator') return { ok: false, error: { code: 'unauthorized', message: 'Administrator access required' } };
@@ -218,6 +228,8 @@ export class DemoOkrRepository implements OkrRepository {
   }
 
   async getHrWorkHours(_query: HrWorkHoursQuery): Promise<RepositoryResult<HrWorkHourRow[]>> {
+    const actor = mockData.users.find((user) => user.id === this.lastUserId);
+    if (actor?.role !== 'hr' || actor.workHoursEnabled === false) return { ok: false, error: { code: 'unauthorized', message: 'Hours unavailable' } };
     return { ok: true, data: [] };
   }
 

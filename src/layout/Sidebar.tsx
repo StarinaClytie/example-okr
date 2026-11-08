@@ -38,7 +38,7 @@ export function Sidebar(props: SidebarProps) {
   const mobileOpen = props.variant === 'mobile' ? props.mobileOpen ?? false : false;
   const drawerRef = props.variant === 'mobile' ? props.drawerRef : undefined;
   const dashboardPath = navigationItems[0].path;
-  const visibleItems = navigationItems.filter((item) => !item.roles || (currentUser && item.roles.includes(currentUser.role)));
+  const visibleItems = navigationItems.filter((item) => (item.path !== '/hr-hours' || currentUser?.workHoursEnabled !== false) && (!item.roles || (currentUser && item.roles.includes(currentUser.role))));
   const collapseLabel = collapsed ? t('navigation.expandSidebar') : t('navigation.collapseSidebar');
   const [tooltip, setTooltip] = useState<{ path: string; label: string; top: number; left: number } | null>(null);
   useEffect(() => {

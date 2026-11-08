@@ -4,6 +4,7 @@ import type { OkrRepository } from '../data/types';
 import { repository } from '../lib/supabase';
 import { currentWeekRange } from '../domain/hrWorkHours';
 import { PageHeader } from '../components/PageHeader';
+import { WorkHoursSettings } from './WorkHoursSettings';
 import { useLocale } from '../i18n/LocaleProvider';
 
 export function SettingsPage({ dataRepository = repository }: { dataRepository?: OkrRepository }) {
@@ -65,13 +66,13 @@ export function SettingsPage({ dataRepository = repository }: { dataRepository?:
       <section id={`${idBase}-${active.id}-panel`} className="settings-panel form-card form-section" role="tabpanel" aria-label={active.label} aria-labelledby={`${idBase}-${active.id}-tab`}>
         <h2>{active.label}</h2>
         <p>{active.description}</p>
-        {active.id === 'system' ? <form onSubmit={save}>
+        {active.id === 'system' ? <><WorkHoursSettings dataRepository={dataRepository} /><form onSubmit={save}>
           <label className="modal-field"><span>{t('settings.timeZone')}</span><input value={timeZone} onChange={(event) => setTimeZone(event.target.value)} placeholder="Europe/London" required disabled={saving} /></label>
           <label className="modal-field"><span>{t('settings.weekStartsOn')}</span><select value={weekStartsOn} onChange={(event) => setWeekStartsOn(Number(event.target.value) as 0 | 1)} disabled={saving}><option value="1">{t('settings.monday')}</option><option value="0">{t('settings.sunday')}</option></select></label>
           <p>{t('settings.calendarHelp')}</p>
           <button type="submit" className="button button--primary" disabled={saving}>{t(saving ? 'settings.savingCalendar' : 'settings.saveCalendar')}</button>
           {message ? <p role={message === 'calendarSaved' ? 'status' : 'alert'}>{t(`settings.${message}`)}</p> : null}
-        </form> : <p className="reports-coming-soon">{t('settings.notImplemented')}</p>}
+        </form></> : <p className="reports-coming-soon">{t('settings.notImplemented')}</p>}
       </section>
     </section>
   );

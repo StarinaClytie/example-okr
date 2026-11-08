@@ -190,3 +190,8 @@ After sign-in as an active administrator, open **Settings → System** and set a
 Fresh organizations default to **UTC / Monday**. Existing organizations retain **Asia/Shanghai / Monday** when upgraded. Daily-report creation/editability and attachment upload authorization use the same server-side organization date; progress-date guards and HR weekly date ranges follow it too. HR daily dates remain the stored date values; selecting a different timezone never rewrites historical entries.
 
 A change takes effect on the server immediately and can change which unconfirmed report is editable as today's report. Confirmed reports remain locked. Ask other members with open sessions to refresh so their interface uses the updated calendar. The demo supports trying these settings within the current page session; demo changes reset when the page is reloaded.
+
+
+## Optional work-hour recording
+
+After applying all migrations, an approved administrator can turn off **Settings → System → Enable work-hour recording**. Existing and new organizations keep recording enabled until changed. Deploy the matching frontend and refresh other open sessions. The database normalizes new report/revision hour values to zero and blocks both HR hour access paths while disabled; historical reports/revisions are preserved and authorized report readers can still retrieve their historical hour metadata. This setting does not erase records or scrub narrative text. See [work hours, access and data lifecycle](privacy-and-data.md) for the role matrix and the current operator-managed retention/deletion process.

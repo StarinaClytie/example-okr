@@ -75,6 +75,7 @@ export function HoursWidget({ data }: HoursWidgetProps) {
   const objectiveById = new Map(data.objectives.map((objective) => [objective.id, objective]));
   const keyResultById = new Map(data.keyResults.map((keyResult) => [keyResult.id, keyResult]));
 
+  if (data.currentUser.workHoursEnabled === false) return null;
   return (
     <div className="hours-visualization">
       <div className="hours-filterbar" role="group" aria-label={t('hours.filters')}>

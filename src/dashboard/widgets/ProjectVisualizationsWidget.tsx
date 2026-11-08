@@ -88,13 +88,15 @@ export function ProjectVisualizationsWidget({ data }: ProjectVisualizationsWidge
   const tabsId = useId();
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [activeTab, setActiveTab] = useState<VisualizationId>(() => defaultTab(data.currentUser.role));
+  const enabled = data.currentUser.workHoursEnabled !== false;
+  const selectedTab = !enabled && activeTab === 'hours' ? 'trend' : activeTab;
   const tabs: readonly WidgetTab<VisualizationId>[] = [
     { id: 'alignment', label: t('visualization.alignment') },
     { id: 'gantt', label: t('visualization.gantt') },
     { id: 'trend', label: t('visualization.trend') },
-    { id: 'hours', label: t('visualization.hours') },
+    ...(enabled ? [{ id: 'hours' as const, label: t('visualization.hours') }] : []),
   ];
-  const activeDefinition = tabs.find((tab) => tab.id === activeTab)!;
+  const activeDefinition = tabs.find((tab) => tab.id === selectedTab)!;
 
   useEffect(() => {
     setActiveTab(defaultTab(data.currentUser.role));
@@ -109,15 +111,15 @@ export function ProjectVisualizationsWidget({ data }: ProjectVisualizationsWidge
         </div>
         <p className="dashboard-widget__muted">{t('visualization.description')}</p>
       </div>
-      <WidgetTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} idBase={tabsId} />
+      <WidgetTabs tabs={tabs} activeTab={selectedTab} onChange={setActiveTab} idBase={tabsId} />
       <div
-        id={`${tabsId}-${activeTab}-panel`}
+        id={`${tabsId}-${selectedTab}-panel`}
         className="visualization-panel"
         role="tabpanel"
         aria-label={activeDefinition.label}
       >
         <Suspense fallback={<VisualizationLoadingFallback />}>
-          {renderResponsivePanel(activeTab, data, isMobile, t)}
+          {renderResponsivePanel(selectedTab, data, isMobile, t)}
         </Suspense>
       </div>
     </section>
