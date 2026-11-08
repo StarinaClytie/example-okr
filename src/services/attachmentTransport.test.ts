@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createOssAttachmentTransport } from './ossAttachmentTransport';
+import { createAttachmentTransport } from './attachmentTransport';
 
 class FakeXhr {
   upload = { addEventListener: vi.fn((_name: string, listener: (event: ProgressEvent) => void) => { this.progress = listener; }) };
@@ -14,13 +14,13 @@ function response(body: unknown, ok = true, status = 200) {
   return { ok, status, json: vi.fn(async () => body) } as unknown as Response;
 }
 
-describe('OSS attachment transport', () => {
+describe('attachment transport', () => {
   it('requests a signed URL, uploads directly with progress, then finalizes', async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(response({ url: 'https://oss.example/signed', contentType: 'application/pdf', headers: { 'x-oss-forbid-overwrite': 'true' } }))
       .mockResolvedValueOnce(response({ state: 'uploaded' }));
     const xhr = new FakeXhr();
-    const transport = createOssAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl, createXhr: () => xhr as never });
+    const transport = createAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl, createXhr: () => xhr as never });
     const progress: number[] = [];
     await transport.upload('attachment-1', new File(['data'], 'a.pdf', { type: 'application/pdf' }), (value) => progress.push(value), new AbortController().signal);
     expect(fetchImpl).toHaveBeenNthCalledWith(1, '/api/attachments/attachment-1/upload-url', expect.objectContaining({ method: 'POST' }));
@@ -35,7 +35,7 @@ describe('OSS attachment transport', () => {
       .mockResolvedValueOnce(response({ url: 'https://oss.example/signed', contentType: 'application/pdf', headers: { 'x-oss-forbid-overwrite': 'true' } }))
       .mockResolvedValueOnce(response({ state: 'uploaded' }));
     const xhr = new FakeXhr(); xhr.status = 409;
-    const transport = createOssAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl, createXhr: () => xhr as never });
+    const transport = createAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl, createXhr: () => xhr as never });
     await transport.upload('a', new File(['data'], 'a.pdf'), vi.fn(), new AbortController().signal);
     expect(fetchImpl).toHaveBeenLastCalledWith('/api/attachments/a/finalize', expect.objectContaining({ method: 'POST' }));
   });
@@ -45,15 +45,32 @@ describe('OSS attachment transport', () => {
       .mockResolvedValueOnce(response({}, false, 422));
     const xhr = new FakeXhr(); xhr.status = 409;
     const progress = vi.fn();
-    const transport = createOssAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl, createXhr: () => xhr as never });
+    const transport = createAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl, createXhr: () => xhr as never });
     await expect(transport.upload('a', new File(['data'], 'a.pdf'), progress, new AbortController().signal)).rejects.toThrow('HTTP 422');
+    expect(progress).not.toHaveBeenCalledWith(100);
+  });
+  it.each([200, 412])('forwards S3/R2 conditional headers and verifies status %s before completion', async (status) => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(response({ url: 'https://storage.example/signed', contentType: 'application/pdf', headers: { 'If-None-Match': '*' } })).mockResolvedValueOnce(response({state: 'uploaded'}));
+    const xhr = new FakeXhr(); xhr.status = status;
+    const progress = vi.fn();
+    const transport = createAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl, createXhr: () => xhr as never });
+    await transport.upload('a', new File(['data'], 'a.pdf'), progress, new AbortController().signal);
+    expect(xhr.setRequestHeader).toHaveBeenCalledWith('If-None-Match', '*');
+    expect(fetchImpl).toHaveBeenLastCalledWith('/api/attachments/a/finalize', expect.objectContaining({method: 'POST'}));
+    expect(progress).toHaveBeenLastCalledWith(100);
+  });
+  it('does not treat a failed S3 conditional PUT as complete if finalization rejects it', async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(response({url: 'https://storage.example/signed',contentType:'application/pdf',headers:{'If-None-Match':'*'}})).mockResolvedValueOnce(response({},false,422));
+    const xhr = new FakeXhr(); xhr.status = 412; const progress = vi.fn();
+    const transport = createAttachmentTransport({getAccessToken:async()=> 'token',fetchImpl,createXhr:()=>xhr as never});
+    await expect(transport.upload('a',new File(['data'],'a.pdf'),progress,new AbortController().signal)).rejects.toThrow('HTTP 422');
     expect(progress).not.toHaveBeenCalledWith(100);
   });
   it('exposes signed downloads and server-coordinated deletion', async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(response({ url: 'https://oss.example/download' }))
       .mockResolvedValueOnce(response(null, true, 204));
-    const transport = createOssAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl });
+    const transport = createAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl });
     expect(await transport.downloadUrl('attachment-1')).toBe('https://oss.example/download');
     await transport.remove('attachment-1');
     expect(fetchImpl).toHaveBeenLastCalledWith('/api/attachments/attachment-1', expect.objectContaining({ method: 'DELETE' }));
@@ -67,7 +84,7 @@ describe('OSS attachment transport', () => {
       .mockResolvedValueOnce(response(null, true, 204));
     const xhr = new FakeXhr();
     xhr.progressEvent = { loaded: 100, total: 100 } as ProgressEvent;
-    const transport = createOssAttachmentTransport({
+    const transport = createAttachmentTransport({
       getAccessToken: async () => 'token',
       fetchImpl,
       createXhr: () => xhr as never,
@@ -86,7 +103,7 @@ describe('OSS attachment transport', () => {
     expect(fetchImpl).toHaveBeenLastCalledWith('/api/resource-attachments/resource-attachment-1', expect.objectContaining({ method: 'DELETE' }));
   });
   it('rejects signing and finalize failures', async () => {
-    const signingFailure = createOssAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl: vi.fn(async () => response({}, false, 403)) });
+    const signingFailure = createAttachmentTransport({ getAccessToken: async () => 'token', fetchImpl: vi.fn(async () => response({}, false, 403)) });
     await expect(signingFailure.upload('a', new File(['x'], 'a.pdf'), vi.fn(), new AbortController().signal)).rejects.toThrow('HTTP 403');
   });
 });

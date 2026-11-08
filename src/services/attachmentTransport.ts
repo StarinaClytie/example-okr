@@ -1,4 +1,4 @@
-export interface OssAttachmentTransportOptions {
+export interface AttachmentTransportOptions {
   getAccessToken(): Promise<string | null>;
   attachmentApiBasePath?: string;
   fetchImpl?: typeof fetch;
@@ -24,7 +24,7 @@ function putFile(createXhr: () => XMLHttpRequest, url: string, contentType: stri
       signal.removeEventListener('abort', abort);
       error ? reject(error) : resolve();
     };
-    const abort = () => { xhr.abort(); finish(new Error('OSS upload aborted')); };
+    const abort = () => { xhr.abort(); finish(new Error('Storage upload aborted')); };
     xhr.open('PUT', url);
     xhr.setRequestHeader('Content-Type', contentType);
     for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
@@ -33,16 +33,16 @@ function putFile(createXhr: () => XMLHttpRequest, url: string, contentType: stri
     });
     // A lost PUT response can leave an immutable object behind. A conflict only
     // advances to server verification; it never marks the upload complete itself.
-    xhr.onload = () => ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 409) ? finish() : finish(new Error(`OSS upload failed (HTTP ${xhr.status})`));
-    xhr.onerror = () => finish(new Error('OSS upload network error'));
-    xhr.onabort = () => finish(new Error('OSS upload aborted'));
+    xhr.onload = () => ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 409 || xhr.status === 412) ? finish() : finish(new Error(`Storage upload failed (HTTP ${xhr.status})`));
+    xhr.onerror = () => finish(new Error('Storage upload network error'));
+    xhr.onabort = () => finish(new Error('Storage upload aborted'));
     if (signal.aborted) { abort(); return; }
     signal.addEventListener('abort', abort, { once: true });
     xhr.send(file);
   });
 }
 
-export function createOssAttachmentTransport(options: OssAttachmentTransportOptions) {
+export function createAttachmentTransport(options: AttachmentTransportOptions) {
   const fetchImpl = options.fetchImpl ?? fetch;
   const createXhr = options.createXhr ?? (() => new XMLHttpRequest());
   const attachmentApiBasePath = options.attachmentApiBasePath ?? '/api/attachments';
@@ -72,4 +72,4 @@ export function createOssAttachmentTransport(options: OssAttachmentTransportOpti
   };
 }
 
-export type OssAttachmentTransport = ReturnType<typeof createOssAttachmentTransport>;
+export type AttachmentTransport = ReturnType<typeof createAttachmentTransport>;

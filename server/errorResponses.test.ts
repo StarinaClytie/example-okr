@@ -9,7 +9,7 @@ function dependencies(): AttachmentApiDependencies {
     authorize: vi.fn(async () => ({ ok: true, data: { id: 'file', path: 'private/object.pdf', mimeType: 'application/pdf', byteSize: 4 } })),
     confirmUpload: vi.fn(async () => ({ ok: true })),
     confirmDeletion: vi.fn(async () => ({ ok: true })),
-    oss: { signPut: vi.fn(async () => 'https://oss.example/upload?Signature=private-signature'), signGet: vi.fn(async () => 'https://oss.example/download?Signature=private-signature'), head: vi.fn(async () => ({ byteSize: 4, mimeType: 'application/pdf', etag: 'etag' })), delete: vi.fn(async () => {}) },
+    store: { signPut: vi.fn(async () => ({ url: 'https://oss.example/upload?Signature=private-signature', headers: { 'x-oss-forbid-overwrite': 'true' } })), signGet: vi.fn(async () => 'https://oss.example/download?Signature=private-signature'), head: vi.fn(async () => ({ byteSize: 4, mimeType: 'application/pdf', etag: 'etag' })), delete: vi.fn(async () => {}) },
   };
 }
 
@@ -27,7 +27,7 @@ describe('safe attachment responses', () => {
     expect(oversized.status).toBe(413);
     expect(oversized.body).toEqual({ error: 'Request body too large' });
     expect(deps.authorize).not.toHaveBeenCalled();
-    expect(deps.oss.signPut).not.toHaveBeenCalled();
+    expect(deps.store.signPut).not.toHaveBeenCalled();
   });
 
   it('returns generic JSON for unsupported encoding, invalid paths and unknown endpoints', async () => {
@@ -49,7 +49,7 @@ describe('safe attachment responses', () => {
     const reply = await request(createApp(deps)).get('/api/attachments/file/download-url');
     expect(reply.status).toBe(403);
     expect(reply.body).toEqual({ error: 'Forbidden' });
-    expect(deps.oss.signGet).not.toHaveBeenCalled();
+    expect(deps.store.signGet).not.toHaveBeenCalled();
   });
 
   it('sanitizes confirmation failures and rejects success-shaped failure statuses', async () => {
