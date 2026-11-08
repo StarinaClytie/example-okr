@@ -47,7 +47,7 @@ export function CompanyHealthWidget({ data }: CompanyHealthWidgetProps) {
       <div className="dashboard-metrics">
         <MetricCard label={t('company.objectiveCompletion')} value={`${objectiveProgress}%`} detail={t('company.objectiveCount', { count: visibleObjectives.length })} />
         <MetricCard label={t('company.krCompletion')} value={`${keyResultProgress}%`} detail={t('company.krCount', { count: visibleKeyResults.length })} />
-        <MetricCard label={t('company.recordedHours')} value={t('common.hours', { count: recordedHours })} detail={t('company.employeeHoursDetail')} />
+        {data.currentUser.workHoursEnabled !== false ? <MetricCard label={t('company.recordedHours')} value={t('common.hours', { count: recordedHours })} detail={t('company.employeeHoursDetail')} /> : null}
         <MetricCard label={t('company.projectProgress')} value={`${projectProgress}%`} detail={t('company.projectCount', { count: visibleProjects.length })} />
       </div>
       <div className="dashboard-list" aria-label={t('company.healthList')}>

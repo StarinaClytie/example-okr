@@ -325,7 +325,7 @@ export function ObjectiveDetailPage({ dataRepository = repository }: { dataRepos
                 <li key={report.id} className="member-list__row">
                   <div className="member-list__identity">
                     <span className="member-list__name">{report.date} · {dashboardData.users.find((user) => user.id === report.authorId)?.name ?? '—'}</span>
-                    <span className="member-list__meta">{t('common.hours', { count: report.hours })}</span>
+                    {currentUser.workHoursEnabled !== false ? <span className="member-list__meta">{t('common.hours', { count: report.hours })}</span> : null}
                   </div>
                 </li>
               ))}

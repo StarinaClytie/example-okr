@@ -70,6 +70,7 @@ function mapProfile(row: Record<string, unknown>): User | null {
     department: typeof row.department === 'string' ? row.department : '',
     projectIds: Array.isArray(row.project_members) ? row.project_members.map((item) => String((item as Record<string, unknown>).project_id)) : [],
     preferredLocale: row.preferred_locale === 'en' ? 'en' : 'zh-CN',
+    workHoursEnabled: organization?.work_hours_enabled !== false,
     businessTimeZone: typeof organization?.business_time_zone === 'string' ? organization.business_time_zone : 'Asia/Shanghai',
     weekStartsOn: organization?.week_starts_on === 0 ? 0 : 1,
     organization: typeof organization?.name === 'string' ? organization.name : undefined,
@@ -291,7 +292,7 @@ export class SupabaseOkrRepository implements OkrRepository {
     if (resolved === 'inactive' || resolved === 'rejected') return { ok: true, data: { kind: 'inactive' } };
     const query = this.client.from('profiles') as ProfileQuery;
     const { data, error } = await query
-      .select('id,display_name,clearance,preferred_locale,organizations!profiles_organization_id_fkey(name,business_time_zone,week_starts_on),user_roles!user_roles_profile_id_fkey(role),project_members!project_members_profile_id_fkey(project_id)')
+      .select('id,display_name,clearance,preferred_locale,organizations!profiles_organization_id_fkey(name,business_time_zone,week_starts_on,work_hours_enabled),user_roles!user_roles_profile_id_fkey(role),project_members!project_members_profile_id_fkey(project_id)')
       .eq('id', session.data.session.user.id)
       .maybeSingle();
     if (error) return failure(error);
@@ -311,7 +312,7 @@ export class SupabaseOkrRepository implements OkrRepository {
 
     const results = await Promise.all([
       this.callRpc<Record<string, unknown>[]>('list_organization_users', {}),
-      this.selectRows('profiles', 'id,clearance,organizations!profiles_organization_id_fkey(name,business_time_zone,week_starts_on)'),
+      this.selectRows('profiles', 'id,clearance,organizations!profiles_organization_id_fkey(name,business_time_zone,week_starts_on,work_hours_enabled)'),
       this.selectRows('projects', 'id,name,description,leader_id,classification,start_date,due_date,status,project_members!project_members_project_id_fkey(profile_id)'),
       this.selectRows('objectives', 'id,project_id,owner_id,title,description,progress,classification,start_date,due_date,number,quarter,priority,okr_status,archived_at,objective_type'),
       this.selectRows('key_results', 'id,objective_id,project_id,owner_id,title,progress,classification,start_date,due_date,metric_type,current_value,target_value,unit,notes,confidence_index,priority,okr_status'),
@@ -572,6 +573,10 @@ export class SupabaseOkrRepository implements OkrRepository {
     const { data, error } = await (this.client.rpc(name, args) as Promise<QueryResponse<T>>);
     if (error) return failure(error);
     return { ok: true, data: data as T };
+  }
+
+  async updateOrganizationWorkHours(enabled: boolean): Promise<RepositoryResult<void>> {
+    return this.callRpc<void>('update_organization_work_hours', { p_enabled: enabled });
   }
 
   async updateOrganizationCalendar(input: { timeZone: string; weekStartsOn: 0 | 1 }): Promise<RepositoryResult<void>> {

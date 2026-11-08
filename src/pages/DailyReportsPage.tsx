@@ -313,7 +313,7 @@ export const DailyReportsPage = forwardRef<DailyReportsPageHandle, { dataReposit
     { key: 'author', label: t('daily.author'), render: (report: DailyReport) => authorName(report.authorId, data.users, t('daily.unknownMember')) },
     { key: 'date', label: t('daily.date'), render: (report: DailyReport) => report.date },
     { key: 'content', label: t('daily.content'), render: (report: DailyReport) => t('daily.entryCount', { count: Math.max(report.blocks?.length ?? 0, 1) }) },
-    { key: 'hours', label: t('daily.hours'), render: (report: DailyReport) => t('common.hours', { count: report.hours }) },
+    ...(currentUser.workHoursEnabled !== false ? [{ key: 'hours', label: t('daily.hours'), render: (report: DailyReport) => t('common.hours', { count: report.hours }) }] : []),
     { key: 'status', label: t('table.status'), render: (report: DailyReport) => <StatusBadge status={report.status} /> },
     { key: 'actions', label: t('okr.actions'), render: (report: DailyReport) => (
       <div className="data-table__actions">
@@ -337,6 +337,7 @@ export const DailyReportsPage = forwardRef<DailyReportsPageHandle, { dataReposit
         <section className="page-section" aria-labelledby="daily-report-authoring">
           <h2 id="daily-report-authoring" ref={authoringHeadingRef} tabIndex={-1}>{editingReport ? t('daily.editMine') : t('daily.fillToday')}</h2>
           <DailyReportForm
+            workHoursEnabled={currentUser.workHoursEnabled !== false}
             mode={editingReport ? 'edit' : 'create'}
             initialDraft={editingReport ? dailyReportToDraft(editingReport) : prefillDraft}
             ownedKeyResults={ownedKeyResults}
@@ -357,6 +358,7 @@ export const DailyReportsPage = forwardRef<DailyReportsPageHandle, { dataReposit
       {(currentUser.role === 'project_leader' || currentUser.role === 'management') && <section className="page-section" aria-labelledby="member-daily-reports"><h2 id="member-daily-reports">{t('daily.memberReports')}</h2><DataTable ariaLabel={t('daily.memberReports')} rows={memberReports} getRowKey={(report) => report.id} emptyMessage={t('daily.memberReportsEmpty')} columns={reportColumns(false)} /></section>}
       {detailDialog ? (
         <DailyReportDetailDialog
+          workHoursEnabled={currentUser.workHoursEnabled !== false}
           detail={detailDialog.detail}
           loading={detailDialog.loading}
           error={detailDialog.error}
