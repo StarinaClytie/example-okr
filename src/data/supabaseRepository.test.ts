@@ -3,7 +3,7 @@ import { SupabaseOkrRepository } from './supabaseRepository';
 import { configurePermissionSource, getPermissionSource } from '../auth/permissionService';
 import { dailyReportToDraft } from './dailyReportMapper';
 import type { SupabaseClientLike } from './types';
-import type { OssAttachmentTransport } from '../services/ossAttachmentTransport';
+import type { AttachmentTransport } from '../services/attachmentTransport';
 
 vi.mock('../mocks/repository', () => {
   throw new Error('Supabase repository must not import mock data at runtime');
@@ -41,7 +41,7 @@ function createClient(options?: {
   return { client, rpc, storageFrom, createSignedUrl };
 }
 
-function createAttachmentTransport(overrides: Partial<OssAttachmentTransport> = {}): OssAttachmentTransport {
+function createAttachmentTransport(overrides: Partial<AttachmentTransport> = {}): AttachmentTransport {
   return {
     upload: vi.fn(async (_id, _file, onProgress) => { onProgress(100); }),
     downloadUrl: vi.fn(async () => 'https://oss.example/signed'),
@@ -962,7 +962,7 @@ describe('SupabaseOkrRepository', () => {
 
   it('removes the resource attachment after its OSS PUT fails', async () => {
     const rpc = vi.fn(async () => ({ data: { id: 'resource-attachment-1', path: 'organization/o/resources/r/resource-attachment-1/manual.pdf' }, error: null }));
-    const upload = vi.fn(async () => { throw new Error('OSS upload failed (HTTP 503)'); });
+    const upload = vi.fn(async () => { throw new Error('Storage upload failed (HTTP 503)'); });
     const remove = vi.fn(async () => undefined);
     const { client } = createClient();
     client.rpc = rpc;
@@ -988,12 +988,12 @@ describe('SupabaseOkrRepository', () => {
     expect(remove).toHaveBeenCalledWith('resource-attachment-1');
   });
 
-  it('allocates a clean attachment ID when retrying after an OSS upload failure', async () => {
+  it('allocates a clean attachment ID when retrying after an Storage upload failure', async () => {
     const rpc = vi.fn()
       .mockResolvedValueOnce({ data: { id: 'resource-attachment-failed', path: 'organization/o/resources/r/resource-attachment-failed/manual.pdf' }, error: null })
       .mockResolvedValueOnce({ data: { id: 'resource-attachment-retry', path: 'organization/o/resources/r/resource-attachment-retry/manual.pdf' }, error: null });
     const upload = vi.fn()
-      .mockRejectedValueOnce(new Error('OSS upload failed (HTTP 503)'))
+      .mockRejectedValueOnce(new Error('Storage upload failed (HTTP 503)'))
       .mockResolvedValueOnce(undefined);
     const remove = vi.fn(async () => undefined);
     const { client } = createClient();
@@ -1011,7 +1011,7 @@ describe('SupabaseOkrRepository', () => {
 
   it('returns the resource cleanup error when cleanup cannot remove a failed upload', async () => {
     const rpc = vi.fn(async () => ({ data: { id: 'resource-attachment-1', path: 'organization/o/resources/r/resource-attachment-1/manual.pdf' }, error: null }));
-    const upload = vi.fn(async () => { throw new Error('OSS upload failed (HTTP 503)'); });
+    const upload = vi.fn(async () => { throw new Error('Storage upload failed (HTTP 503)'); });
     const remove = vi.fn(async () => { throw new Error('OSS deletion network error'); });
     const { client } = createClient();
     client.rpc = rpc;

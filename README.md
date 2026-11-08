@@ -83,14 +83,14 @@ Captured from the English public demo using fictional sample data.
 - HR work-hour review and organization-level user and role administration.
 - In-app notifications and instant English/Chinese interface switching.
 - Supabase-backed authentication, persistence, restricted RPCs, and row-level security.
-- Private attachment transfer through presigned Alibaba Cloud OSS URLs, with attachment metadata retained in PostgreSQL.
+- Private attachment transfer through presigned URLs from private Alibaba Cloud OSS, AWS S3, or Cloudflare R2 storage, with attachment metadata retained in PostgreSQL.
 
 ## Technology Stack
 
 - React, TypeScript, React Router, and Vite
 - Recharts for operational visualizations
 - Supabase Auth and PostgreSQL with row-level security
-- Express attachment API and Alibaba Cloud OSS
+- Express attachment API with selectable Alibaba Cloud OSS, AWS S3, or Cloudflare R2 storage
 - Vitest and Testing Library
 
 ## Local Demo — No External Services Required
@@ -103,15 +103,15 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open the local URL printed by Vite. The default example configuration uses demo mode. You do **not** need to deploy a website, create a database, configure email, run the attachment server, or provide Supabase/OSS credentials.
+Open the local URL printed by Vite. The default example configuration uses demo mode. You do **not** need to deploy a website, create a database, configure email, run the attachment server, or provide Supabase/object-storage credentials.
 
 Use the role selector above the dashboard to explore the included sample identities. Demo edits live only in memory and reset on refresh. Files are not uploaded, and real account registration, password recovery, email delivery, and production authorization are not exercised by this mode.
 
 ### Using Your Own Data
 
-Switching to `supabase` mode is a separate setup path. It requires your own database with the repository migrations applied, Auth configuration and an initial organization/administrator. Email verification and password recovery require working Auth email delivery. Real attachments additionally require private OSS storage and the attachment API; resource notification emails use a separate server-side email provider configuration.
+Switching to `supabase` mode is a separate setup path. It requires your own database with the repository migrations applied, Auth configuration and an initial organization/administrator. Email verification and password recovery require working Auth email delivery. Real attachments additionally require private object storage and the attachment API; resource notification emails use a separate server-side email provider configuration.
 
-Follow the [fresh-install guide](docs/supabase-setup.md) for your own hosted Supabase project, initial administrator, Auth email, attachment API and optional resource emails. Server and function examples are in `.env.server.example` and `.env.functions.example`. Live SMTP, Resend and OSS delivery require your own credentials and must be checked separately; see the [verification record](docs/deployment-verification.md) for tested local database/Auth flows and the remaining production checks.
+Follow the [fresh-install guide](docs/supabase-setup.md) for your own hosted Supabase project, initial administrator, Auth email, attachment API and optional resource emails. Server and function examples are in `.env.server.example` and `.env.functions.example`. Live SMTP, Resend and object-storage delivery require your own credentials and must be checked separately; see the [verification record](docs/deployment-verification.md) for tested local database/Auth flows and the remaining production checks.
 
 First-visit interface language follows your browser’s supported language preferences (English or Chinese), with English as the fallback. Saved local choices and signed-in profile preferences take precedence. The hosted public demo always starts in English on its first visit. Daily-report Word and PDF exports use the active interface language for system labels while preserving authored content.
 
@@ -135,7 +135,7 @@ VITE_SUPABASE_ANON_KEY=
 
 Frontend navigation and controls improve the user experience, but they are not the authorization boundary. In Supabase mode, PostgreSQL row-level security, restricted RPCs, and attachment authorization checks validate every protected read or write. Daily-report content, evidence, and attachments are treated as separately permissioned resources.
 
-Attachment binaries are uploaded directly to private Alibaba Cloud OSS objects through short-lived signed URLs. PostgreSQL stores the application metadata, ownership, object path, state, checksum, media type, and size. The attachment API keeps OSS credentials and the Supabase service-role key on the server only.
+Attachment binaries are uploaded directly to private objects in the selected OSS, S3, or R2 bucket through short-lived signed URLs. PostgreSQL stores the application metadata, ownership, object path, state, checksum, media type, and size. The attachment API keeps storage credentials and the Supabase service-role key on the server only.
 
 ## Verification
 
@@ -168,7 +168,7 @@ npm run build:production
 
 The build reads the standard Vite production environment files, with deployment-injected variables taking precedence, and writes the static application to `dist/`. Serve it as a single-page application and route `/api/attachments` and `/api/resource-attachments` to the separately built attachment API.
 
-The attachment API requires server-only Supabase and OSS configuration, including `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `OSS_ACCESS_KEY_ID`, `OSS_ACCESS_KEY_SECRET`, `OSS_BUCKET`, `OSS_REGION`, and `OSS_ENDPOINT`. Build and run it with:
+The attachment API requires server-only Supabase configuration (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) and credentials for one private storage provider. Set `ATTACHMENT_STORAGE_PROVIDER=oss|s3|r2`; omitted means `oss`, preserving existing OSS configuration. Follow the [object-storage guide](docs/object-storage.md) for provider settings, permissions and CORS. Choose the provider and bucket before the first upload: changing environment variables does not migrate existing files and can break reads. Build and run it with:
 
 ```bash
 npm run server:build
