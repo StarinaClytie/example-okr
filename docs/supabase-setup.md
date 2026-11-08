@@ -24,11 +24,30 @@ Use a fresh checkout and a disposable local Supabase stack, separate from any re
 ```bash
 npm exec supabase -- start
 npm exec supabase -- db reset --local
-npm exec supabase -- test db
+npm exec supabase -- test db --local
 npm exec supabase -- db lint --local
 ```
 
 `db reset --local` deletes and recreates the local database. Use it only for this isolated test stack. **Do not reset a linked/production database.** The CLI applies every SQL file in `supabase/migrations/` in version order; do not use an old handpicked list or skip migrations. `supabase/tests/` contains database regression tests. The manually triggered **Verify isolated database** GitHub Actions workflow also runs the real first-administrator bootstrap tests in a disposable stack; it uses no hosted credentials. A successful frontend test run does not establish that migrations, RLS or live email delivery work.
+
+### Repeatable local account acceptance
+
+A fresh checkout does not guarantee a fresh local database: stopping Supabase normally retains its Docker data volumes. Reusing a project ID can restore an older instance. For a new acceptance run, choose an unused ID such as `okr-repro-check-new-install` and free service ports in `supabase/config.toml` **before starting**. Preserve existing volumes and use another ID if one already exists. The account acceptance tools intentionally reject ordinary project/container names.
+
+After the isolated stack starts and the migration/test commands above pass, run:
+
+```bash
+python3 scripts/test-bootstrap-admin.py supabase_db_okr-repro-check-new-install
+node scripts/test-local-onboarding.mjs .
+```
+
+Use the same actual ID as `project_id`; replace `new-install` in both places if that ID has already been used. The Python cases roll back their fixtures. The onboarding script derives the container from that configured ID, requires empty organization and Auth data, and creates disposable accounts through local Auth. It checks captured confirmation mail, first-administrator bootstrap, pending/approved state, sign-in, stored profile, denied employee promotion and a captured recovery email. It does not send mail to an external recipient or validate hosted SMTP. Python 3 is needed for the bootstrap test cases, not for running the app.
+
+The onboarding check leaves its fake accounts in that isolated database. To repeat it, reset **only that disposable stack**, or use another new ID. To stop it while retaining its data:
+
+```bash
+npm exec supabase -- stop
+```
 
 ## 3. Create your own hosted project and apply all migrations
 
@@ -195,3 +214,8 @@ A change takes effect on the server immediately and can change which unconfirmed
 ## Optional work-hour recording
 
 After applying all migrations, an approved administrator can turn off **Settings → System → Enable work-hour recording**. Existing and new organizations keep recording enabled until changed. Deploy the matching frontend and refresh other open sessions. The database normalizes new report/revision hour values to zero and blocks both HR hour access paths while disabled; historical reports/revisions are preserved and authorized report readers can still retrieve their historical hour metadata. This setting does not erase records or scrub narrative text. See [work hours, access and data lifecycle](privacy-and-data.md) for the role matrix and the current operator-managed retention/deletion process.
+
+
+## First-sign-in language
+
+Apply all migrations before deploying the frontend. New profiles have no account language preference until the member selects one; the interface then follows the browser or the locally selected sign-in language. Choosing a language while signed in saves that account preference. Upgrading preserves every existing English/Chinese profile value, including an earlier Chinese default. Existing members can switch once to save their desired language; the upgrade does not overwrite their choices.

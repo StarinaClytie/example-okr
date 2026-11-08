@@ -3,12 +3,13 @@
 Usage: python3 scripts/test-bootstrap-admin.py supabase_db_okr-repro-check
 Each case rolls back all fixtures and bootstrap writes. Never targets remote DBs.
 """
+import re
 import pathlib
 import subprocess
 import sys
 
-if len(sys.argv) != 2 or sys.argv[1] != 'supabase_db_okr-repro-check':
-    raise SystemExit('Requires disposable container supabase_db_okr-repro-check')
+if len(sys.argv) != 2 or len(sys.argv[1]) > len('supabase_db_') + 63 or not re.fullmatch(r'supabase_db_okr-repro-check(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?', sys.argv[1]):
+    raise SystemExit('Requires disposable container supabase_db_okr-repro-check or supabase_db_okr-repro-check-<unique-suffix>')
 container = sys.argv[1]
 source = pathlib.Path(__file__).with_name('bootstrap-admin.sql').read_text()
 uid = 'a0000000-0000-0000-0000-000000000001'

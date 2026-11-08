@@ -142,8 +142,8 @@ select has_check('public', 'report_attachments', 'attachment byte size has a che
 select col_is_unique('public', 'report_attachments', array['storage_path'], 'attachment storage paths are unique');
 select is(
   (select preferred_locale from public.profiles where id = '00000000-0000-0000-0000-000000000002'),
-  'zh-CN',
-  'profiles default to Simplified Chinese'
+  null::text,
+  'profiles leave language unspecified until explicitly chosen'
 );
 select throws_ok(
   $$update public.profiles set preferred_locale = 'fr' where id = '00000000-0000-0000-0000-000000000002'$$,
