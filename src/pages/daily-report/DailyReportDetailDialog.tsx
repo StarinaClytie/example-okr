@@ -9,6 +9,7 @@ import { linkedKeyResult } from '../../domain/dailyReportKeyResult';
 import { DailyReportExportError, exportDailyReportWord, printDailyReportPdf } from '../../services/dailyReportExport';
 
 export interface DailyReportDetailDialogProps {
+  workHoursEnabled?: boolean;
   detail?: DailyReportDetail;
   loading?: boolean;
   error?: MessageKey;
@@ -28,6 +29,7 @@ const focusableSelector = [
 ].join(',');
 
 export function DailyReportDetailDialog({
+  workHoursEnabled = true,
   detail,
   loading = false,
   error,
@@ -134,7 +136,7 @@ export function DailyReportDetailDialog({
     setExportingWord(true);
     setActionError(undefined);
     try {
-      await exportDailyReportWord(currentDetail, locale);
+      await exportDailyReportWord(currentDetail, locale, workHoursEnabled);
     } catch {
       setActionError('daily.exportFailed');
     } finally {
@@ -147,7 +149,7 @@ export function DailyReportDetailDialog({
     setExportingPdf(true);
     setActionError(undefined);
     try {
-      printDailyReportPdf(currentDetail, locale);
+      printDailyReportPdf(currentDetail, locale, workHoursEnabled);
     } catch (error) {
       setActionError(error instanceof DailyReportExportError || (typeof error === 'object' && error !== null && 'code' in error && error.code === 'popup_blocked')
         ? 'daily.exportPopupBlocked'
@@ -195,7 +197,7 @@ export function DailyReportDetailDialog({
             <dl className="daily-report-detail__meta">
               <div><dt>{t('daily.date')}</dt><dd>{currentDetail.date}</dd></div>
               <div><dt>{t('daily.author')}</dt><dd>{currentDetail.authorName}</dd></div>
-              <div><dt>{t('daily.hours')}</dt><dd>{t('common.hours', { count: currentDetail.hours })}</dd></div>
+              {workHoursEnabled ? <div><dt>{t('daily.hours')}</dt><dd>{t('common.hours', { count: currentDetail.hours })}</dd></div> : null}
               <div><dt>{t('table.status')}</dt><dd><StatusBadge status={currentDetail.status} /></dd></div>
             </dl>
 

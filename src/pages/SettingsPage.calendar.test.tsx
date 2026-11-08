@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -82,4 +83,28 @@ it('refreshes the demo profile and shares saved settings after switching users',
   fireEvent.click(screen.getByRole('button', { name: 'Employee' }));
   expect(screen.getByTestId('profile-zone')).toHaveTextContent('America/New_York');
   expect(screen.queryByLabelText('组织时区')).not.toBeInTheDocument();
+});
+it('lets an admin turn off hours separately from the calendar', async () => {
+ const value = context();
+ const updateOrganizationWorkHours = vi.fn(async () => ({ ok: true as const, data: undefined }));
+ render(page(value, {mode:'supabase', updateOrganizationWorkHours} as unknown as OkrRepository));
+ fireEvent.click(screen.getByRole('tab', {name:'系统设置'}));
+ fireEvent.click(screen.getByRole('checkbox', {name:'启用工时记录'}));
+ fireEvent.click(screen.getByRole('button', {name:'保存工时设置'}));
+ await waitFor(() => expect(value.refreshProfile).toHaveBeenCalledOnce());
+ expect(updateOrganizationWorkHours).toHaveBeenCalledWith(false);
+ expect(screen.getByText(/已有历史工时不会被删除/)).toBeVisible();
+});
+
+
+it('shows a saved status when demo profile refresh changes the hours flag', async () => {
+ const flags = users.map((user) => ({user, enabled:user.workHoursEnabled}));
+ try {
+  const repository = new DemoOkrRepository();
+  render(<AuthProvider initialUserId="user-administrator"><LocaleProvider repository={repository}><SettingsPage dataRepository={repository} /></LocaleProvider></AuthProvider>);
+  fireEvent.click(screen.getByRole('tab', {name:'系统设置'}));
+  fireEvent.click(screen.getByRole('checkbox', {name:'启用工时记录'}));
+  await userEvent.click(screen.getByRole('button', {name:'保存工时设置'}));
+  expect(await screen.findByRole('status')).toHaveTextContent('工时设置已保存');
+ } finally { flags.forEach(({user,enabled}) => {user.workHoursEnabled=enabled;}); }
 });

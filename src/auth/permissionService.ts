@@ -438,6 +438,7 @@ function isKrOwnerForUser(userId: string, krId: string): boolean {
 
 export function can(user: User | undefined, action: Action, resource?: PermissionResource): PermissionDecision {
   if (!user) return deny('需要登录');
+  if (action === 'worklog.read_hours' && user.workHoursEnabled === false) return deny('Work-hour recording is disabled');
 
   const capabilities = roleActions[user.role];
   if (!capabilities?.has(action)) return deny();

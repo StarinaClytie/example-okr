@@ -227,7 +227,7 @@ describe('DailyReportDetailDialog', () => {
     await user.click(wordButton);
 
     expect(exportDailyReportWord).toHaveBeenCalledTimes(1);
-    expect(exportDailyReportWord).toHaveBeenCalledWith(detail, 'zh-CN');
+    expect(exportDailyReportWord).toHaveBeenCalledWith(detail, 'zh-CN', true);
     expect(wordButton).toBeDisabled();
     completeExport?.();
     expect(await screen.findByRole('button', { name: '导出 Word' })).toBeEnabled();
@@ -241,8 +241,8 @@ describe('DailyReportDetailDialog', () => {
       render(<AuthProvider><LocaleProvider repository={repo}><DailyReportDetailDialog detail={detail} repository={repo} onClose={vi.fn()} onConfirmed={vi.fn()} /></LocaleProvider></AuthProvider>);
       await userEvent.click(screen.getByRole('button', { name: 'Export Word' }));
       await userEvent.click(screen.getByRole('button', { name: 'Export PDF' }));
-      expect(exportDailyReportWord).toHaveBeenCalledWith(detail, 'en');
-      expect(printDailyReportPdf).toHaveBeenCalledWith(detail, 'en');
+      expect(exportDailyReportWord).toHaveBeenCalledWith(detail, 'en', true);
+      expect(printDailyReportPdf).toHaveBeenCalledWith(detail, 'en', true);
     } finally { window.localStorage.removeItem('example-okr.locale'); }
   });
 

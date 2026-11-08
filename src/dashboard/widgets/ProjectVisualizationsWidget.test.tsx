@@ -248,3 +248,12 @@ describe('ProjectVisualizationsWidget', () => {
     expect(screen.queryByText(secretReportBody)).not.toBeInTheDocument();
   });
 });
+
+it('removes an active hours panel immediately when the organization opts out', async () => {
+ const hrData = mockRepository.getDashboardData('user-hr');
+ const view = render(<ProjectVisualizationsWidget data={hrData} />);
+ expect(screen.getByRole('tab', {name:'工时'})).toBeVisible();
+ view.rerender(<ProjectVisualizationsWidget data={{...hrData,currentUser:{...hrData.currentUser,workHoursEnabled:false}}} />);
+ expect(screen.queryByRole('tab', {name:'工时'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('tabpanel', {name:'工时'})).not.toBeInTheDocument();
+});

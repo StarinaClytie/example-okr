@@ -674,3 +674,13 @@ describe('DailyReportForm', () => {
     }));
   });
 });
+
+it('submits evidence without collecting hours when disabled, including an existing draft', async () => {
+ const onSubmit = vi.fn(async (_draft: DailyReportDraft) => ({ok:true as const}));
+ render(<DailyReportForm workHoursEnabled={false} initialDraft={completeDraft()} ownedKeyResults={ownedKeyResults} objectives={objectives} projects={projects} onCancel={vi.fn()} onSubmit={onSubmit} />);
+ expect(screen.queryByLabelText(/记录工时/)).not.toBeInTheDocument();
+ expect(screen.queryByText(/总工时/)).not.toBeInTheDocument();
+ await userEvent.click(screen.getByRole('button', {name:'提交日报'}));
+ await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+ expect(onSubmit.mock.calls[0][0].blocks[0]).toMatchObject({hours:0, workDescription:'执行', result:'完成'});
+});

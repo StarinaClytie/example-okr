@@ -13,6 +13,7 @@ export type DailyReportSubmitResult =
   | { ok: false; error: LocalizedMessage };
 
 interface DailyReportFormProps {
+  workHoursEnabled?: boolean;
   mode?: 'create' | 'edit';
   initialDraft?: DailyReportDraft;
   ownedKeyResults: readonly KeyResult[];
@@ -83,7 +84,7 @@ function newBlock(id: string, linkedKeyResultId = ''): DailyOkrBlockDraft {
   };
 }
 
-export function DailyReportForm({ mode = 'create', initialDraft, ownedKeyResults, objectives, projects = [], onCancel, onSubmit, onDownloadAttachment, onRemoveAttachment, clearance = 'restricted', reportDate, uploadSession, uploadRepository }: DailyReportFormProps) {
+export function DailyReportForm({ workHoursEnabled = true, mode = 'create', initialDraft, ownedKeyResults, objectives, projects = [], onCancel, onSubmit, onDownloadAttachment, onRemoveAttachment, clearance = 'restricted', reportDate, uploadSession, uploadRepository }: DailyReportFormProps) {
   const { t } = useLocale();
   const [draft, setDraft] = useState<DailyReportDraft>(() => initialDraft
     ? cloneDraft(initialDraft)
@@ -104,9 +105,11 @@ export function DailyReportForm({ mode = 'create', initialDraft, ownedKeyResults
   const finalizedAttachmentIdsRef = useRef(new Map<string, string>());
   const validationOptions = useMemo(() => ({ allowLegacyLinkEvidence: mode === 'edit' }), [mode]);
 
+  const submissionDraft = useMemo(() => workHoursEnabled ? draft : { ...draft, blocks: draft.blocks.map((block) => ({ ...block, hours: 0 })) }, [draft, workHoursEnabled]);
+
   const validationErrors = useMemo(() => showSubmitErrors
-    ? Object.fromEntries(validateDailyReportDraft(draft, validationOptions).map((issue) => [issue.field, localizeValidation(issue.message, t)!])) as Record<string, string>
-    : {}, [draft, showSubmitErrors, t, validationOptions]);
+    ? Object.fromEntries(validateDailyReportDraft(submissionDraft, validationOptions).map((issue) => [issue.field, localizeValidation(issue.message, t)!])) as Record<string, string>
+    : {}, [submissionDraft, showSubmitErrors, t, validationOptions]);
 
   const objectiveById = useMemo(() => new Map(objectives.map((objective) => [objective.id, objective])), [objectives]);
   const projectById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
@@ -193,7 +196,7 @@ export function DailyReportForm({ mode = 'create', initialDraft, ownedKeyResults
     setDraft((current) => ({ ...current, blocks: [...current.blocks, newBlock(id)] }));
   };
 
-  const lastBlockComplete = validateDailyReportDraft({ blocks: [draft.blocks[draft.blocks.length - 1]!], classification: draft.classification }, validationOptions).length === 0;
+  const lastBlockComplete = validateDailyReportDraft({ blocks: [submissionDraft.blocks[submissionDraft.blocks.length - 1]!], classification: draft.classification }, validationOptions).length === 0;
 
   const hasNoLinkedKr = draft.blocks.every((block) => !block.linkedKeyResultId);
 
@@ -205,7 +208,7 @@ export function DailyReportForm({ mode = 'create', initialDraft, ownedKeyResults
       setStatus({ key: repositoryErrorKey(uploadSessionErrorRef.current ?? 'unknown') });
       return;
     }
-    const result = session ? await onSubmit(draft, session) : await onSubmit(draft);
+    const result = session ? await onSubmit(submissionDraft, session) : await onSubmit(submissionDraft);
     setIsSubmitting(false);
     setStatus(result.ok ? { key: mode === 'edit' ? 'daily.editSaved' : 'daily.submitted' } : result.error);
   };
@@ -213,7 +216,7 @@ export function DailyReportForm({ mode = 'create', initialDraft, ownedKeyResults
   const submit = async () => {
     if (isSubmitting || activeMutations > 0 || !uploadsComplete || !evidenceWithinClearance) return;
     setShowSubmitErrors(true);
-    const issues = validateDailyReportDraft(draft, validationOptions);
+    const issues = validateDailyReportDraft(submissionDraft, validationOptions);
     if (issues.length > 0) {
       setStatus({ key: 'daily.fixRequired' });
       const firstIssue = issues[0]!;
@@ -318,7 +321,7 @@ export function DailyReportForm({ mode = 'create', initialDraft, ownedKeyResults
     setDraft((current) => ({ ...current, blocks: current.blocks.filter((candidate) => candidate.id !== id) }));
   };
 
-  const formIsValid = validateDailyReportDraft(draft, validationOptions).length === 0;
+  const formIsValid = validateDailyReportDraft(submissionDraft, validationOptions).length === 0;
   const allowedEvidenceClassifications = allowedClassifications(clearance);
   const evidenceWithinClearance = draft.blocks.every((block) => block.evidence.every((item) => allowedEvidenceClassifications.includes(item.classification)));
   const incompleteAttachments = draft.blocks.flatMap((block) => block.evidence).filter((item) => !dailyEvidenceIsUploaded(item));
@@ -442,7 +445,7 @@ export function DailyReportForm({ mode = 'create', initialDraft, ownedKeyResults
                 }}
               />
 
-              <label className="modal-field">
+              {workHoursEnabled ? <label className="modal-field">
                 <span>{t('daily.blockHours')} *</span>
                 <input
                   id={`${block.id}-hours`}
@@ -457,7 +460,7 @@ export function DailyReportForm({ mode = 'create', initialDraft, ownedKeyResults
                   onChange={(event) => updateBlock(block.id, { hours: event.target.value === '' ? 0 : Number(event.target.value) })}
                 />
                 {errorFor('hours') && <span id={errorId('hours')} role="alert" className="field-error">{errorFor('hours')}</span>}
-              </label>
+              </label> : null}
 
             </section>
           );
@@ -466,7 +469,7 @@ export function DailyReportForm({ mode = 'create', initialDraft, ownedKeyResults
         <button type="button" className="button button--secondary" onClick={addBlock} disabled={!lastBlockComplete}>{t('daily.addBlock')}</button>
         {!lastBlockComplete ? <p className="daily-form-actions__hint">{t('daily.completeCurrentBlock')}</p> : null}
 
-        <p className="daily-total-hours">{t('daily.totalHours', { count: totalHours })}</p>
+        {workHoursEnabled ? <p className="daily-total-hours">{t('daily.totalHours', { count: totalHours })}</p> : null}
 
         <div className="daily-form-actions">
           <button type="button" className="button button--secondary" disabled={activeMutations > 0 || isSubmitting} onClick={() => void cancel()}>{t('common.cancel')}</button>

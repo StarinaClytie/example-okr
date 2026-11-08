@@ -1151,3 +1151,12 @@ it('carries the joined organization calendar into dashboard currentUser', async 
   const result = await new SupabaseOkrRepository(client).getDashboardData();
   expect(result).toMatchObject({ ok: true, data: { currentUser: { businessTimeZone: 'UTC', weekStartsOn: 0 } } });
 });
+
+it('maps disabled hours from organization and updates through the scoped RPC', async () => {
+  const { client, rpc } = createClient({ rpcData: { state: 'active' }, profile: { id: 'profile-1', display_name: 'Ada', clearance: 'internal', approval_status: 'approved', is_active: true, user_roles: [{ role: 'administrator' }], organizations: { name: 'Example', work_hours_enabled: false } } });
+  const repository = new SupabaseOkrRepository(client);
+  expect(await repository.getCurrentProfile()).toMatchObject({ ok: true, data: { kind: 'active', user: { workHoursEnabled: false } } });
+  expect(vi.mocked(client.from).mock.results[0].value.select).toHaveBeenCalledWith(expect.stringContaining('work_hours_enabled'));
+  expect(await repository.updateOrganizationWorkHours(false)).toMatchObject({ ok: true });
+  expect(rpc).toHaveBeenCalledWith('update_organization_work_hours', { p_enabled: false });
+});
