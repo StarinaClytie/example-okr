@@ -32,6 +32,7 @@ const pageByPath = {
 function ProtectedNavigationRoute({ item }: { item: NavigationItem }) {
   const { currentUser } = useAuth();
   const Page = item.path === '/dashboard' ? DashboardPage : pageByPath[item.path as keyof typeof pageByPath];
+  if (item.path === '/hr-hours' && currentUser?.workHoursEnabled === false) return <Navigate to="/access-denied" replace />;
   if (item.roles && (!currentUser || !item.roles.includes(currentUser.role))) {
     return <Navigate to="/access-denied" replace />;
   }

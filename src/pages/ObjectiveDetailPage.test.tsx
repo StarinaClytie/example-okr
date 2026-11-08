@@ -26,9 +26,9 @@ function makeRepository(overrides: Record<string, unknown> = {}): OkrRepository 
   } as unknown as OkrRepository;
 }
 
-function renderDetail(dataRepository: OkrRepository) {
+function renderDetail(dataRepository: OkrRepository, currentUser: User = projectLeader) {
   const authValue: AuthContextValue = {
-    status: 'ready', mode: 'supabase', currentUser: projectLeader, selectableUsers: [], selectUser: vi.fn(), signOut: vi.fn(),
+    status: 'ready', mode: 'supabase', currentUser, selectableUsers: [], selectUser: vi.fn(), signOut: vi.fn(),
   };
   return render(
     <AuthContext.Provider value={authValue}>
@@ -79,4 +79,12 @@ describe('ObjectiveDetailPage KR owner candidates', () => {
     expect(await screen.findByText('当前没有符合条件的 KR 负责人。')).toBeVisible();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
+});
+
+
+it('keeps objective report dates but omits hours when recording is disabled', async () => {
+  renderDetail(makeRepository(), {...projectLeader,workHoursEnabled:false});
+  await userEvent.click(await screen.findByRole('tab', {name:'报告'}));
+  expect(screen.getByRole('tabpanel', {name:'报告'})).toBeVisible();
+  expect(screen.queryAllByText(/\d+(?:\.\d+)? 小时/)).toHaveLength(0);
 });

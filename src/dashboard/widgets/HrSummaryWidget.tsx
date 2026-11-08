@@ -15,6 +15,8 @@ export function HrSummaryWidget({ data }: HrSummaryWidgetProps) {
   );
   const totalLogged = authorizedWorkloads.reduce((sum, workload) => sum + workload.loggedHours, 0);
 
+  if (data.currentUser.workHoursEnabled === false) return <p>{t('settings.hoursDisabled')}</p>;
+
   return (
     <section className="dashboard-widget dashboard-widget--wide" aria-labelledby="hr-summary-title">
       <div className="dashboard-widget__header">

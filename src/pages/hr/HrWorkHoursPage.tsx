@@ -59,7 +59,7 @@ export function HrWorkHoursPage({ dataRepository = repository }: { dataRepositor
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.workHoursEnabled === false) return;
     let cancelled = false;
     setLoading(true);
     void dataRepository.getHrWorkHours({ from: fromDate, to: toDate }).then((result) => {
@@ -105,6 +105,7 @@ export function HrWorkHoursPage({ dataRepository = repository }: { dataRepositor
   };
 
   if (!currentUser) return null;
+  if (currentUser.workHoursEnabled === false) return <p>{t('settings.hoursDisabled')}</p>;
 
   return (
     <section className="business-page" aria-labelledby="hr-hours-title">

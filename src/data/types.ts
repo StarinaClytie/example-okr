@@ -467,6 +467,7 @@ export interface KrProgressUpdateInput {
 
 export interface OkrRepository {
   readonly mode: AppMode;
+  updateOrganizationWorkHours?(enabled: boolean): Promise<RepositoryResult<void>>;
   updateOrganizationCalendar?(input: { timeZone: string; weekStartsOn: 0 | 1 }): Promise<RepositoryResult<void>>;
   getCachedDashboardData?(userId: string): DashboardData | undefined;
   getCurrentProfile(): Promise<RepositoryResult<AuthProfileState>>;

@@ -174,3 +174,21 @@ describe('daily report exports', () => {
     }
   });
 });
+
+it('omits historical hour fields from both English export formats when disabled', async () => {
+ toBlob.mockResolvedValue(new Blob(['word']));
+ vi.stubGlobal('URL', {createObjectURL:vi.fn(()=>'blob:report'),revokeObjectURL:vi.fn()});
+ vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>undefined);
+ await exportDailyReportWord(detail(), 'en', false);
+ const word = serialisedText(toBlob.mock.calls.at(-1)![0]);
+ expect(word).not.toContain('7.5');
+ expect(word).not.toContain('Work hours');
+ expect(word).toContain('完成导出功能');
+ const write = vi.fn();
+ vi.spyOn(window,'open').mockReturnValue({document:{open:vi.fn(),write,close:vi.fn()},addEventListener:vi.fn()} as unknown as Window);
+ printDailyReportPdf(detail(),'en',false);
+ const html=write.mock.calls[0][0] as string;
+ expect(html).not.toContain('7.5');
+ expect(html).not.toContain('Work hours');
+ expect(html).toContain('完成导出功能');
+});

@@ -41,6 +41,8 @@ export interface User {
   projectIds: string[];
   preferredLocale?: 'zh-CN' | 'en';
   organization?: string;
+  /** Organization opt-out; omitted by legacy profiles means enabled. */
+  workHoursEnabled?: boolean;
   businessTimeZone?: string;
   weekStartsOn?: 0 | 1;
 }

@@ -92,3 +92,12 @@ These checks validate the local migration and application paths. Operators of pe
 - Independent security review found no blocking issues in the adapter/configuration changes. No database migration is required for this feature.
 
 **Still unverified:** actual AWS S3, Cloudflare R2 and OSS bucket acceptance for this version. Use your own isolated private bucket and credentials to follow the [storage acceptance steps](object-storage.md#acceptance-and-verification-limits). Existing files are not copied or routed across providers; changing the selected bucket/provider requires a separate migration plan.
+
+## 8 November 2026 — optional work hours and data lifecycle
+
+- Added organization work-hour opt-out with administrator-only save, server-side normalization of new report/revision hours, and disabled-mode guards on both the HR RPC and legacy HR workload view. Historical report/revision hours remain intact and stay subject to existing report-reader authorization.
+- Application regression suite: **89 files, 778 tests passed**. Frontend build, attachment-server build, configuration verification and dependency audit passed (**0 vulnerabilities**). The frontend retains its existing bundle-size advisory.
+- Fresh isolated local database migration replay passed, followed by **24 pgTAP files / 872 assertions**. Tests cover enabled compatibility, administrator/employee/anonymous/inactive and tenant scope, historical preservation, confirmation locks, equal-total new revisions, both disabled HR access paths and re-enabling.
+- Local database advisors retain the existing `hr_workload` security-definer-view finding and 30 prior warnings (18 auth-RLS-initplan, 9 multiple-permissive-policies, 3 function-search-path-mutable). The view deliberately exposes narrowly scoped HR totals beyond report-reader RLS; this update preserves its organization/HR predicates and adds the opt-out predicate. These existing findings are not a clean security-advisor result.
+- Browser verification used the English fictional demo: administrator save/refresh, unchecked saved state, hidden HR hours navigation/tab and retained KR views. Independent review identified one Objective-report display omission, which was fixed and regression-tested; final review found no remaining blockers.
+- Verification used only a disposable local database, stopped afterwards with its backup retained. No hosted database or real team data was changed. Retention/erasure remains an operator-managed process; no automated purge or compliance certification is claimed.

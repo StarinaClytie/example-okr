@@ -177,6 +177,12 @@ npm run server:start
 
 See the [Supabase and deployment guide](docs/supabase-setup.md) for database setup, production checks, backups, and operational procedures.
 
+## Optional work hours and data privacy
+
+Use daily results and attachments as evidence for KR progress. Teams that do not need time recording can turn off **Settings → System → Enable work-hour recording**. New submissions then store zero hours, hour fields disappear from reports/exports/dashboard views, and the HR hours API is blocked. Existing historical hours are retained under existing report-access rules; turning the feature off does not erase data. Recording remains enabled by default for upgrade compatibility.
+
+See [work hours, access and data lifecycle](docs/privacy-and-data.md) for the role matrix, refresh behavior, data categories and current manual retention/deletion process. There is no automatic report expiry or self-service erasure workflow; these are future extension areas for teams adapting the project.
+
 ## Business dates and deployment boundaries
 
 Administrators configure an **organization business timezone** and **Sunday or Monday week start** in Settings → System. Daily-report dates, edit/upload locks, progress-date checks, and HR weekly ranges use that organization calendar. New organizations default to **UTC / Monday**; upgrading preserves existing organizations as **Asia/Shanghai / Monday**. Stored historical report dates are never rewritten. Changing the calendar changes which unconfirmed report counts as today; confirmed reports stay locked. Other open sessions should refresh after a calendar change. Interface language and browser timezone do not change the organization calendar. Native date-input calendars and date placeholders follow the browser or operating-system locale, so they can appear in a different language from the application interface. See [MDN: date inputs](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/date). See the [calendar setup and upgrade notes](docs/supabase-setup.md#organization-calendar).

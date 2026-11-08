@@ -389,3 +389,7 @@ describe('can — classification and relationship transparency', () => {
     }
   });
 });
+
+it('denies hour-specific access when the organization disables recording', () => {
+ expect(can({...hr,workHoursEnabled:false},'worklog.read_hours',mockData.workloads[0]).allowed).toBe(false);
+});
