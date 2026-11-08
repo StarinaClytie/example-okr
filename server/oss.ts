@@ -1,14 +1,14 @@
 import OSS from 'ali-oss';
-import type { ServerConfig } from './config.js';
-import type { OssObjectStore } from './types.js';
+import type { OssStorageConfig } from './config.js';
+import type { ObjectStore } from './types.js';
 
-export function createOssObjectStore(config: ServerConfig): OssObjectStore {
+export function createOssObjectStore(config: OssStorageConfig): ObjectStore {
   const client = new OSS({
-    accessKeyId: config.ossAccessKeyId,
-    accessKeySecret: config.ossAccessKeySecret,
-    bucket: config.ossBucket,
-    region: config.ossRegion,
-    endpoint: config.ossEndpoint,
+    accessKeyId: config.accessKeyId,
+    accessKeySecret: config.accessKeySecret,
+    bucket: config.bucket,
+    region: config.region,
+    endpoint: config.endpoint,
     secure: true,
   });
   // Forbid-overwrite is ignored on enabled AND suspended versioned buckets.
@@ -16,7 +16,7 @@ export function createOssObjectStore(config: ServerConfig): OssObjectStore {
   async function requireNeverVersionedBucket() {
     const result = await (client as OSS & {
       getBucketVersioning(bucket: string): Promise<{ status: number; versionStatus?: string }>;
-    }).getBucketVersioning(config.ossBucket);
+    }).getBucketVersioning(config.bucket);
     if (result.status !== 200 || (result.versionStatus !== undefined && result.versionStatus !== '')) {
       throw new Error('Attachment storage requires a never-versioned OSS bucket');
     }
@@ -25,7 +25,7 @@ export function createOssObjectStore(config: ServerConfig): OssObjectStore {
     async signPut(path, contentType, expiresIn) {
       await requireNeverVersionedBucket();
       const options = { method: 'PUT' as const, expires: expiresIn, 'Content-Type': contentType, 'x-oss-forbid-overwrite': 'true' };
-      return client.signatureUrl(path, options);
+      return { url: client.signatureUrl(path, options), headers: { 'x-oss-forbid-overwrite': 'true' } };
     },
     async head(path) {
       await requireNeverVersionedBucket();
@@ -45,6 +45,6 @@ export function createOssObjectStore(config: ServerConfig): OssObjectStore {
         ...(disposition ? { response: { 'content-disposition': disposition } } : {}),
       });
     },
-    async delete(path) { await client.delete(path); },
+    async delete(path) { await requireNeverVersionedBucket(); await client.delete(path); },
   };
 }
